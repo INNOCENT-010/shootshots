@@ -160,8 +160,8 @@ export default function SubscriptionSuccessPage() {
           .from('subscriptions')
           .insert(subscriptionData);
         
-        if (subError) 
       }
+      
       
       const profileUpdate = {
         is_premium: pendingData.planId !== 'free',
