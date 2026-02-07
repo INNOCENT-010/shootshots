@@ -399,24 +399,9 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
         </button>
       </div>
 
-      {/* HYBRID LAYOUT: Grid on mobile, Masonry columns on desktop */}
+      {/* MASONRY GRID - Fixed with break-inside-avoid and proper spacing */}
       {filteredItems.length > 0 ? (
-        <div className="
-          /* Mobile & Tablet: CSS Grid for reliable scrolling */
-          grid grid-cols-2 gap-3
-          
-          /* Small tablets: 3 columns */
-          sm:grid-cols-3
-          
-          /* Desktop: Switch to masonry columns */
-          lg:columns-3 lg:gap-4 xl:columns-4 2xl:columns-5
-          
-          /* Hide grid on desktop */
-          lg:grid-cols-none
-          
-          /* Masonry item styling for desktop */
-          lg:[&>*]:break-inside-avoid lg:[&>*]:mb-4
-        ">
+        <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3 space-y-3">
           {filteredItems.map((item, index) => {
             const coverMedia = item.portfolio_media?.find(m => m.display_order === 0) || 
                              item.portfolio_media?.[0]
@@ -426,7 +411,7 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
             return (
               <div
                 key={`${item.id}-${index}-${sessionSeed}`}
-                className="w-full"
+                className="break-inside-avoid mb-3"
               >
                 <div 
                   className="bg-white rounded-lg overflow-hidden hover:opacity-95 transition-opacity cursor-pointer border border-gray-200 shadow-sm hover:shadow-md"
