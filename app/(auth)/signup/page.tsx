@@ -1,4 +1,4 @@
-// app/%28auth%29/signup/page.tsx
+// app/(auth)/signup/page.tsx
 'use client'
 
 import { useState } from 'react'
@@ -44,7 +44,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
-  const [userType, setUserType] = useState<'client' | 'creator'>('creator') // Default to creator
+  const [userType, setUserType] = useState<'client' | 'creator'>('creator')
   const [selectedCreatorType, setSelectedCreatorType] = useState('photographer')
   const [location, setLocation] = useState('Lagos')
   const [loading, setLoading] = useState(false)
@@ -131,30 +131,30 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2">Join Shootshots</h1>
-          <p className="text-gray-400">Create your account to start your creative journey</p>
+          <h1 className="text-3xl font-bold mb-2 text-green-900">Join Shootshots</h1>
+          <p className="text-gray-600">Create your account to start your creative journey</p>
         </div>
         
-        <form onSubmit={handleSignup} className="space-y-6 bg-gray-900 p-8 rounded-lg">
+        <form onSubmit={handleSignup} className="space-y-6 bg-white p-8 rounded-lg border border-gray-200 shadow-sm">
           {/* User type selection */}
           <div>
-            <label className="block text-sm font-medium mb-3">I want to:</label>
+            <label className="block text-sm font-medium mb-3 text-gray-900">I want to:</label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setUserType('client')}
-                className={`p-4 rounded-lg border-2 text-left transition-all ${userType === 'client' ? 'border-white bg-gray-800' : 'border-gray-700 hover:border-gray-500'}`}
+                className={`p-4 rounded-lg border-2 text-left transition-all ${userType === 'client' ? 'border-green-600 bg-green-50' : 'border-gray-300 hover:border-gray-400'}`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-500/20 rounded">
-                    <User size={20} className="text-blue-400" />
+                  <div className="p-2 bg-green-100 rounded">
+                    <User size={20} className="text-green-700" />
                   </div>
                   <div>
-                    <div className="font-medium">Browse & Hire</div>
-                    <div className="text-sm text-gray-400">Discover and contact creators</div>
+                    <div className="font-medium text-gray-900">Browse & Hire</div>
+                    <div className="text-sm text-gray-600">Discover and contact creators</div>
                   </div>
                 </div>
               </button>
@@ -162,15 +162,15 @@ export default function SignupPage() {
               <button
                 type="button"
                 onClick={() => setUserType('creator')}
-                className={`p-4 rounded-lg border-2 text-left transition-all ${userType === 'creator' ? 'border-white bg-gray-800' : 'border-gray-700 hover:border-gray-500'}`}
+                className={`p-4 rounded-lg border-2 text-left transition-all ${userType === 'creator' ? 'border-green-600 bg-green-50' : 'border-gray-300 hover:border-gray-400'}`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-500/20 rounded">
-                    <Camera size={20} className="text-purple-400" />
+                  <div className="p-2 bg-green-100 rounded">
+                    <Camera size={20} className="text-green-700" />
                   </div>
                   <div>
-                    <div className="font-medium">Showcase Work</div>
-                    <div className="text-sm text-gray-400">Upload portfolio and get hired</div>
+                    <div className="font-medium text-gray-900">Showcase Work</div>
+                    <div className="text-sm text-gray-600">Upload portfolio and get hired</div>
                   </div>
                 </div>
               </button>
@@ -180,28 +180,28 @@ export default function SignupPage() {
           {/* Basic info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-900">
                 Display Name *
               </label>
               <input
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full p-3 bg-gray-800 rounded-lg border border-gray-700 focus:border-white focus:outline-none"
+                className="w-full p-3 bg-gray-50 rounded-lg border border-gray-300 focus:border-green-600 focus:outline-none text-gray-900"
                 placeholder="Your creative name"
                 required
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-900">
                 Email Address *
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-3 bg-gray-800 rounded-lg border border-gray-700 focus:border-white focus:outline-none"
+                className="w-full p-3 bg-gray-50 rounded-lg border border-gray-300 focus:border-green-600 focus:outline-none text-gray-900"
                 placeholder="you@example.com"
                 required
               />
@@ -210,19 +210,19 @@ export default function SignupPage() {
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label className="block text-sm font-medium mb-2 text-gray-900">
               Password *
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 bg-gray-800 rounded-lg border border-gray-700 focus:border-white focus:outline-none"
+              className="w-full p-3 bg-gray-50 rounded-lg border border-gray-300 focus:border-green-600 focus:outline-none text-gray-900"
               placeholder="At least 6 characters"
               required
               minLength={6}
             />
-            <div className="mt-1 text-xs text-gray-500">
+            <div className="mt-1 text-xs text-gray-600">
               Password must be at least 6 characters long
             </div>
           </div>
@@ -231,7 +231,7 @@ export default function SignupPage() {
           {userType === 'creator' && (
             <>
               <div>
-                <label className="block text-sm font-medium mb-3">
+                <label className="block text-sm font-medium mb-3 text-gray-900">
                   What type of creator are you? *
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -240,15 +240,15 @@ export default function SignupPage() {
                       key={type.value}
                       type="button"
                       onClick={() => setSelectedCreatorType(type.value)}
-                      className={`p-4 rounded-lg border text-left transition-all ${selectedCreatorType === type.value ? 'border-white bg-gray-800' : 'border-gray-700 hover:border-gray-500'}`}
+                      className={`p-4 rounded-lg border text-left transition-all ${selectedCreatorType === type.value ? 'border-green-600 bg-green-50' : 'border-gray-300 hover:border-gray-400'}`}
                     >
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-gray-700/50 rounded">
+                        <div className="p-2 bg-gray-100 rounded">
                           {type.icon}
                         </div>
-                        <div className="font-medium">{type.label}</div>
+                        <div className="font-medium text-gray-900">{type.label}</div>
                       </div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-gray-600">
                         {type.description}
                       </div>
                     </button>
@@ -257,13 +257,13 @@ export default function SignupPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium mb-2 text-gray-900">
                   Location *
                 </label>
                 <select
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="w-full p-3 bg-gray-800 rounded-lg border border-gray-700 focus:border-white focus:outline-none"
+                  className="w-full p-3 bg-gray-50 rounded-lg border border-gray-300 focus:border-green-600 focus:outline-none text-gray-900"
                   required={userType === 'creator'}
                 >
                   <option value="Lagos">Lagos</option>
@@ -273,9 +273,9 @@ export default function SignupPage() {
               </div>
 
               {/* Free tier info */}
-              <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                <div className="font-medium mb-1">Free Tier Includes:</div>
-                <ul className="text-sm text-gray-400 space-y-1">
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="font-medium mb-1 text-gray-900">Free Tier Includes:</div>
+                <ul className="text-sm text-gray-600 space-y-1">
                   <li>• 5 portfolio item uploads</li>
                   <li>• Public profile with contact info</li>
                   <li>• Discoverable in client feeds</li>
@@ -287,8 +287,8 @@ export default function SignupPage() {
 
           {/* Error/Success messages */}
           {error && (
-            <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg">
-              <div className="flex items-center gap-2 text-red-400">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center gap-2 text-red-800">
                 <div className="font-medium">Error:</div>
                 <span>{error}</span>
               </div>
@@ -296,8 +296,8 @@ export default function SignupPage() {
           )}
 
           {success && (
-            <div className="p-4 bg-green-900/30 border border-green-700 rounded-lg">
-              <div className="flex items-center gap-2 text-green-400">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2 text-green-800">
                 <div className="font-medium">Success!</div>
                 <span>{success}</span>
               </div>
@@ -308,11 +308,11 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full p-4 bg-white text-black font-medium rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full p-4 bg-green-900 text-white font-medium rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <div className="flex items-center justify-center gap-2">
-                <div className="h-4 w-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 Creating account...
               </div>
             ) : (
@@ -321,12 +321,12 @@ export default function SignupPage() {
           </button>
 
           {/* Login link */}
-          <div className="text-center text-gray-400 text-sm pt-4 border-t border-gray-800">
+          <div className="text-center text-gray-600 text-sm pt-4 border-t border-gray-200">
             Already have an account?{' '}
             <button
               type="button"
               onClick={() => router.push('/login')}
-              className="text-white font-medium hover:underline"
+              className="text-green-800 font-medium hover:underline"
             >
               Sign in here
             </button>

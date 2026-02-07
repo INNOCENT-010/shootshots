@@ -1,8 +1,7 @@
-// app/(client)/profile/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link' // ADD THIS
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import { User, Settings, Camera, Heart, Bookmark } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -69,7 +68,6 @@ export default function ProfilePage() {
         uploadsCount: uploadsCount || 0
       })
     } catch (error) {
-      console.error('Error loading user stats:', error)
     }
   }
 
@@ -80,31 +78,40 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        Loading...
+      <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center">
+        <div className="text-gray-600">Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="border-b border-gray-800">
+    <div className="min-h-screen bg-white text-gray-900">
+      {/* DARK GREEN HEADER */}
+      <header className="sticky top-0 z-50 border-b border-green-800 bg-green-900/95 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold">My Profile</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-white">My Profile</h1>
+            <Link 
+              href="/" 
+              className="text-sm text-green-200 hover:text-white"
+            >
+              ← Back to Home
+            </Link>
+          </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Profile Card */}
-          <div className="bg-gray-900 rounded-xl p-6 mb-6">
+          <div className="bg-white rounded-xl p-6 mb-6 border border-gray-200 shadow-sm">
             <div className="flex items-center gap-4 mb-6">
-              <div className="h-16 w-16 rounded-full bg-gray-700 flex items-center justify-center text-xl">
+              <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center text-xl text-green-900">
                 {user.email?.charAt(0).toUpperCase()}
               </div>
               <div>
-                <h2 className="text-xl font-bold">{user.email}</h2>
-                <p className="text-gray-400">Member since {new Date(user.created_at).toLocaleDateString()}</p>
+                <h2 className="text-xl font-bold text-gray-900">{user.email}</h2>
+                <p className="text-gray-600">Member since {new Date(user.created_at).toLocaleDateString()}</p>
               </div>
             </div>
 
@@ -112,32 +119,32 @@ export default function ProfilePage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <Link 
                 href="/saved"
-                className="bg-gray-800 rounded-lg p-4 text-center hover:bg-gray-700 transition-colors"
+                className="bg-gray-50 rounded-lg p-4 text-center hover:bg-gray-100 transition-colors border border-gray-200"
               >
-                <Bookmark className="mx-auto mb-2 text-blue-500" size={24} />
-                <div className="text-lg font-bold">{stats.savedCount}</div>
-                <div className="text-sm text-gray-400">Saved</div>
+                <Bookmark className="mx-auto mb-2 text-green-700" size={24} />
+                <div className="text-lg font-bold text-gray-900">{stats.savedCount}</div>
+                <div className="text-sm text-gray-600">Saved</div>
               </Link>
               
               <Link 
                 href="/liked"
-                className="bg-gray-800 rounded-lg p-4 text-center hover:bg-gray-700 transition-colors"
+                className="bg-gray-50 rounded-lg p-4 text-center hover:bg-gray-100 transition-colors border border-gray-200"
               >
-                <Heart className="mx-auto mb-2 text-red-500" size={24} />
-                <div className="text-lg font-bold">{stats.likedCount}</div>
-                <div className="text-sm text-gray-400">Liked</div>
+                <Heart className="mx-auto mb-2 text-red-600" size={24} />
+                <div className="text-lg font-bold text-gray-900">{stats.likedCount}</div>
+                <div className="text-sm text-gray-600">Liked</div>
               </Link>
               
-              <div className="bg-gray-800 rounded-lg p-4 text-center">
-                <Camera className="mx-auto mb-2 text-gray-500" size={24} />
-                <div className="text-lg font-bold">{stats.uploadsCount}</div>
-                <div className="text-sm text-gray-400">Uploads</div>
+              <div className="bg-gray-50 rounded-lg p-4 text-center border border-gray-200">
+                <Camera className="mx-auto mb-2 text-gray-600" size={24} />
+                <div className="text-lg font-bold text-gray-900">{stats.uploadsCount}</div>
+                <div className="text-sm text-gray-600">Uploads</div>
               </div>
               
-              <div className="bg-gray-800 rounded-lg p-4 text-center">
-                <User className="mx-auto mb-2 text-gray-500" size={24} />
-                <div className="text-lg font-bold">Client</div>
-                <div className="text-sm text-gray-400">Account Type</div>
+              <div className="bg-gray-50 rounded-lg p-4 text-center border border-gray-200">
+                <User className="mx-auto mb-2 text-gray-600" size={24} />
+                <div className="text-lg font-bold text-gray-900">Client</div>
+                <div className="text-sm text-gray-600">Account Type</div>
               </div>
             </div>
 
@@ -145,7 +152,7 @@ export default function ProfilePage() {
             <div className="flex gap-3">
               <button 
                 onClick={() => router.push('/settings')}
-                className="px-4 py-2 bg-white text-black rounded-lg font-medium hover:bg-gray-200"
+                className="px-4 py-2 bg-green-900 text-white rounded-lg font-medium hover:bg-green-800"
               >
                 Edit Profile
               </button>
@@ -162,20 +169,20 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Link 
               href="/saved"
-              className="bg-gray-900 rounded-xl p-6 hover:bg-gray-800 transition-colors"
+              className="bg-white rounded-xl p-6 hover:bg-gray-50 transition-colors border border-gray-200"
             >
-              <Bookmark className="inline-block mr-3 text-blue-500" size={20} />
-              <span className="font-medium">Saved Items</span>
-              <p className="text-gray-400 text-sm mt-2">View all items you've saved</p>
+              <Bookmark className="inline-block mr-3 text-green-700" size={20} />
+              <span className="font-medium text-gray-900">Saved Items</span>
+              <p className="text-gray-600 text-sm mt-2">View all items you've saved</p>
             </Link>
             
             <Link 
               href="/liked"
-              className="bg-gray-900 rounded-xl p-6 hover:bg-gray-800 transition-colors"
+              className="bg-white rounded-xl p-6 hover:bg-gray-50 transition-colors border border-gray-200"
             >
-              <Heart className="inline-block mr-3 text-red-500" size={20} />
-              <span className="font-medium">Liked Items</span>
-              <p className="text-gray-400 text-sm mt-2">View all items you've liked</p>
+              <Heart className="inline-block mr-3 text-red-600" size={20} />
+              <span className="font-medium text-gray-900">Liked Items</span>
+              <p className="text-gray-600 text-sm mt-2">View all items you've liked</p>
             </Link>
           </div>
         </div>

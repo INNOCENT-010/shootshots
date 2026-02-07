@@ -51,7 +51,6 @@ export default function ProfilePage() {
         setProfileImageUrl(profile.profile_image_url || '')
       }
     } catch (error) {
-      console.error('Error loading profile:', error)
     }
   }
 
@@ -96,7 +95,6 @@ export default function ProfilePage() {
 
       return urlData.publicUrl
     } catch (error) {
-      console.error('Error uploading profile image:', error)
       return null
     }
   }
@@ -154,21 +152,21 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-2">Edit Profile</h1>
-        <p className="text-gray-400">Update your contact information and profile picture</p>
+        <h1 className="text-2xl font-bold mb-2 text-gray-900">Edit Profile</h1>
+        <p className="text-gray-600">Update your contact information and profile picture</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Profile picture */}
         <div>
-          <label className="block text-sm font-medium mb-2">
+          <label className="block text-sm font-medium mb-2 text-gray-900">
             Profile Picture
           </label>
           <div className="flex items-center gap-6">
             <div className="relative">
-              <div className="w-24 h-24 rounded-full bg-gray-800 flex items-center justify-center overflow-hidden">
+              <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-300">
                 {profileImageUrl ? (
                   <img
                     src={profileImageUrl}
@@ -180,7 +178,7 @@ export default function ProfilePage() {
                 )}
               </div>
               <label className="absolute bottom-0 right-0 cursor-pointer">
-                <div className="p-2 bg-gray-700 rounded-full hover:bg-gray-600">
+                <div className="p-2 bg-green-700 text-white rounded-full hover:bg-green-800 transition-colors">
                   <Upload size={16} />
                 </div>
                 <input
@@ -191,7 +189,7 @@ export default function ProfilePage() {
                 />
               </label>
             </div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-gray-600">
               <div>Click the icon to upload a new photo</div>
               <div>Recommended: Square image, max 5MB</div>
             </div>
@@ -200,15 +198,15 @@ export default function ProfilePage() {
 
         {/* Display name */}
         <div>
-          <label className="block text-sm font-medium mb-2">
-            <User size={14} className="inline mr-2" />
+          <label className="block text-sm font-medium mb-2 text-gray-900">
+            <User size={14} className="inline mr-2 text-gray-700" />
             Display Name *
           </label>
           <input
             type="text"
             value={formData.display_name}
             onChange={(e) => handleInputChange('display_name', e.target.value)}
-            className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:border-white focus:outline-none"
+            className="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:border-green-600 focus:outline-none text-gray-900"
             placeholder="Your name or brand"
             required
           />
@@ -216,15 +214,15 @@ export default function ProfilePage() {
 
         {/* Email */}
         <div>
-          <label className="block text-sm font-medium mb-2">
-            <Mail size={14} className="inline mr-2" />
+          <label className="block text-sm font-medium mb-2 text-gray-900">
+            <Mail size={14} className="inline mr-2 text-gray-700" />
             Email Address *
           </label>
           <input
             type="email"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
-            className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:border-white focus:outline-none"
+            className="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:border-green-600 focus:outline-none text-gray-900"
             placeholder="you@example.com"
             required
           />
@@ -232,14 +230,14 @@ export default function ProfilePage() {
 
         {/* Location */}
         <div>
-          <label className="block text-sm font-medium mb-2">
-            <MapPin size={14} className="inline mr-2" />
+          <label className="block text-sm font-medium mb-2 text-gray-900">
+            <MapPin size={14} className="inline mr-2 text-gray-700" />
             Location
           </label>
           <select
             value={formData.location}
             onChange={(e) => handleInputChange('location', e.target.value)}
-            className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:border-white focus:outline-none"
+            className="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:border-green-600 focus:outline-none text-gray-900"
           >
             <option value="">Select location</option>
             <option value="Lagos">Lagos</option>
@@ -250,47 +248,47 @@ export default function ProfilePage() {
 
         {/* WhatsApp */}
         <div>
-          <label className="block text-sm font-medium mb-2">
-            <Phone size={14} className="inline mr-2" />
+          <label className="block text-sm font-medium mb-2 text-gray-900">
+            <Phone size={14} className="inline mr-2 text-gray-700" />
             WhatsApp Number
           </label>
           <input
             type="tel"
             value={formData.whatsapp_number}
             onChange={(e) => handleInputChange('whatsapp_number', e.target.value)}
-            className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:border-white focus:outline-none"
+            className="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:border-green-600 focus:outline-none text-gray-900"
             placeholder="+234 800 000 0000"
           />
-          <div className="mt-1 text-xs text-gray-500">
+          <div className="mt-1 text-xs text-gray-600">
             Include country code. Clients will use this to contact you via WhatsApp.
           </div>
         </div>
 
         {/* Instagram */}
         <div>
-          <label className="block text-sm font-medium mb-2">
-            <Instagram size={14} className="inline mr-2" />
+          <label className="block text-sm font-medium mb-2 text-gray-900">
+            <Instagram size={14} className="inline mr-2 text-gray-700" />
             Instagram Profile URL
           </label>
           <input
             type="url"
             value={formData.instagram_url}
             onChange={(e) => handleInputChange('instagram_url', e.target.value)}
-            className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:border-white focus:outline-none"
+            className="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:border-green-600 focus:outline-none text-gray-900"
             placeholder="https://instagram.com/yourusername"
           />
         </div>
 
         {/* Error/Success messages */}
         {error && (
-          <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg">
-            <div className="text-red-400">{error}</div>
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="text-red-800">{error}</div>
           </div>
         )}
 
         {success && (
-          <div className="p-4 bg-green-900/30 border border-green-700 rounded-lg">
-            <div className="text-green-400">{success}</div>
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="text-green-800">{success}</div>
           </div>
         )}
 
@@ -298,7 +296,7 @@ export default function ProfilePage() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full p-4 bg-white text-black font-medium rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full p-4 bg-green-900 text-white font-medium rounded-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           <Save size={20} />
           {saving ? 'Saving...' : 'Save Profile'}

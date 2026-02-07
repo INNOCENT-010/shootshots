@@ -1,4 +1,3 @@
-// components/feed/FeedFilters.tsx
 'use client'
 
 import { useState } from 'react'
@@ -34,18 +33,18 @@ export default function FeedFilters({ onFilterChange }: FeedFiltersProps) {
   }
 
   return (
-    <div className="sticky top-0 z-40 border-b border-gray-800 bg-black">
+    <div className="sticky top-0 z-40 border-b border-gray-200 bg-white">
       <div className="px-2 py-1">
         <div className="flex items-center justify-between overflow-x-auto hide-scrollbar">
           {/* Location filter */}
           <div className="flex items-center gap-1 shrink-0">
-            <MapPin size={12} className="text-gray-400" />
+            <MapPin size={12} className="text-gray-600" />
             <div className="flex gap-1">
               {locations.map((location) => (
                 <button
                   key={location}
                   onClick={() => handleFilterChange('location', location)}
-                  className={`rounded-full px-2 py-1 text-xs ${activeLocation === location ? 'bg-white text-black' : 'bg-gray-800 text-gray-300'}`}
+                  className={`rounded-full px-2 py-1 text-xs ${activeLocation === location ? 'bg-green-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                 >
                   {location}
                 </button>
@@ -55,13 +54,13 @@ export default function FeedFilters({ onFilterChange }: FeedFiltersProps) {
 
           {/* Creator type filter */}
           <div className="flex items-center gap-1 shrink-0 mx-2">
-            <Camera size={12} className="text-gray-400" />
+            <Camera size={12} className="text-gray-600" />
             <div className="flex gap-1">
               {creatorTypes.map((type) => (
                 <button
                   key={type}
                   onClick={() => handleFilterChange('creatorType', type)}
-                  className={`rounded-full px-2 py-1 text-xs ${activeCreatorType === type ? 'bg-white text-black' : 'bg-gray-800 text-gray-300'}`}
+                  className={`rounded-full px-2 py-1 text-xs ${activeCreatorType === type ? 'bg-green-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                 >
                   {type}
                 </button>
@@ -71,13 +70,13 @@ export default function FeedFilters({ onFilterChange }: FeedFiltersProps) {
 
           {/* Media type filter */}
           <div className="flex items-center gap-1 shrink-0">
-            <Video size={12} className="text-gray-400" />
+            <Video size={12} className="text-gray-600" />
             <div className="flex gap-1">
               {mediaTypes.map((type) => (
                 <button
                   key={type}
                   onClick={() => handleFilterChange('mediaType', type)}
-                  className={`rounded-full px-2 py-1 text-xs ${activeMediaType === type ? 'bg-white text-black' : 'bg-gray-800 text-gray-300'}`}
+                  className={`rounded-full px-2 py-1 text-xs ${activeMediaType === type ? 'bg-green-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                 >
                   {type}
                 </button>

@@ -1,4 +1,3 @@
-// components/interactions/LikeSaveButtons.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -102,7 +101,6 @@ export default function LikeSaveButtons({
         }
       }
     } catch (error) {
-      console.error('Error checking item status:', error)
     }
   }
 
@@ -154,7 +152,6 @@ export default function LikeSaveButtons({
         })
       }
     } catch (error) {
-      console.error('Error handling like:', error)
     } finally {
       setLoading(false)
     }
@@ -178,7 +175,6 @@ export default function LikeSaveButtons({
         setSaveCount(data.save_count)
       }
     } catch (error) {
-      console.error('Error handling save:', error)
     } finally {
       setLoading(false)
     }
@@ -206,7 +202,7 @@ export default function LikeSaveButtons({
           className={`flex items-center justify-center rounded-full transition-all ${sizeClasses[size]} ${
             liked 
               ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30' 
-              : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
           }`}
           aria-label={liked ? 'Unlike' : 'Like'}
         >
@@ -221,7 +217,7 @@ export default function LikeSaveButtons({
         </button>
         
         {showCounts && likeCount > 0 && (
-          <span className="text-sm text-gray-400 min-w-[20px] text-center">
+          <span className="text-sm text-gray-600 min-w-5 text-center">
             {likeCount}
           </span>
         )}
@@ -236,8 +232,8 @@ export default function LikeSaveButtons({
             saved 
               ? 'bg-blue-500/20 text-blue-500 hover:bg-blue-500/30' 
               : isLoggedIn
-                ? 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
-                : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                ? 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}
           aria-label={saved ? 'Unsave' : 'Save'}
           title={!isLoggedIn ? 'Login to save items' : saved ? 'Remove from saved' : 'Save item'}
@@ -253,7 +249,7 @@ export default function LikeSaveButtons({
         </button>
         
         {showCounts && saveCount > 0 && (
-          <span className="text-sm text-gray-400 min-w-[20px] text-center">
+          <span className="text-sm text-gray-600 min-w-5 text-center">
             {saveCount}
           </span>
         )}

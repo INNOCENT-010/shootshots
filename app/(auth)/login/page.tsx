@@ -1,12 +1,13 @@
-// app/(auth)/login/page.tsx
+// app/(auth)/login/page.tsx - FIXED WITH SUSPENSE
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { migrateGuestLikesToUser } from '@/lib/utils/LikeSave'
+import { Loader2 } from 'lucide-react'
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -49,19 +50,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <h1 className="text-3xl font-bold mb-8 text-center">Shootshots</h1>
+        <h1 className="text-3xl font-bold mb-8 text-center text-green-900">Shootshots</h1>
         
         {/* Login Type Toggle */}
-        <div className="flex mb-6 bg-gray-900 rounded-lg p-1">
+        <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
           <button
             type="button"
             onClick={() => setIsCreatorLogin(false)}
             className={`flex-1 py-2 rounded text-sm font-medium transition-colors ${
               !isCreatorLogin 
-                ? 'bg-white text-black' 
-                : 'text-gray-400 hover:text-white'
+                ? 'bg-green-900 text-white' 
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             Client Login
@@ -71,8 +72,8 @@ export default function LoginPage() {
             onClick={() => setIsCreatorLogin(true)}
             className={`flex-1 py-2 rounded text-sm font-medium transition-colors ${
               isCreatorLogin 
-                ? 'bg-blue-600 text-white' 
-                : 'text-gray-400 hover:text-white'
+                ? 'bg-green-900 text-white' 
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             Creator Login
@@ -82,8 +83,8 @@ export default function LoginPage() {
         {/* Login Indicator */}
         <div className={`mb-6 p-3 rounded-lg border text-center text-sm ${
           isCreatorLogin 
-            ? 'bg-blue-900/20 border-blue-700 text-blue-300' 
-            : 'bg-gray-900 border-gray-700 text-gray-300'
+            ? 'bg-green-50 border-green-200 text-green-800' 
+            : 'bg-gray-50 border-gray-200 text-gray-700'
         }`}>
           {isCreatorLogin 
             ? 'Logging in as a creator to access your portfolio dashboard' 
@@ -91,33 +92,33 @@ export default function LoginPage() {
           }
         </div>
         
-        <form onSubmit={handleLogin} className="space-y-6 bg-gray-900 p-8 rounded-lg">
+        <form onSubmit={handleLogin} className="space-y-6 bg-white p-8 rounded-lg border border-gray-200 shadow-sm">
           <div>
-            <label className="block text-sm font-medium mb-2">Email</label>
+            <label className="block text-sm font-medium mb-2 text-gray-900">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 bg-gray-800 rounded border border-gray-700 focus:border-white focus:outline-none"
+              className="w-full p-3 bg-gray-50 rounded border border-gray-300 focus:border-green-600 focus:outline-none text-gray-900"
               required
               autoComplete="email"
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-2">Password</label>
+            <label className="block text-sm font-medium mb-2 text-gray-900">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 bg-gray-800 rounded border border-gray-700 focus:border-white focus:outline-none"
+              className="w-full p-3 bg-gray-50 rounded border border-gray-300 focus:border-green-600 focus:outline-none text-gray-900"
               required
               autoComplete="current-password"
             />
           </div>
           
           {error && (
-            <div className="p-3 bg-red-900/50 border border-red-700 rounded text-sm">
+            <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
               {error}
             </div>
           )}
@@ -127,8 +128,8 @@ export default function LoginPage() {
             disabled={loading}
             className={`w-full p-3 font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               isCreatorLogin
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-white text-black hover:bg-gray-200'
+                ? 'bg-green-900 text-white hover:bg-green-800'
+                : 'bg-green-900 text-white hover:bg-green-800'
             }`}
           >
             {loading 
@@ -138,31 +139,31 @@ export default function LoginPage() {
           </button>
           
           <div className="text-center space-y-3">
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-600 text-sm">
               Don't have an account?{' '}
               <button
                 type="button"
-                onClick={() => router.push(isCreatorLogin ? '/creator/signup' : '/signup')}
-                className="text-white hover:underline"
+                onClick={() => router.push(isCreatorLogin ? '/signup' : '/signup')}
+                className="text-green-800 hover:underline font-medium"
               >
                 Sign up {isCreatorLogin ? 'as Creator' : ''}
               </button>
             </p>
             
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-600 text-sm">
               {isCreatorLogin ? (
                 <button
                   type="button"
                   onClick={() => router.push('/login')}
-                  className="text-white hover:underline"
+                  className="text-green-800 hover:underline font-medium"
                 >
                   ← Back to Client Login
                 </button>
               ) : (
                 <button
                   type="button"
-                  onClick={() => router.push('/creator/login')}
-                  className="text-white hover:underline"
+                  onClick={() => router.push('/login')}
+                  className="text-green-800 hover:underline font-medium"
                 >
                   Creator Login →
                 </button>
@@ -172,5 +173,21 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+    </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <LoginContent />
+    </Suspense>
   )
 }

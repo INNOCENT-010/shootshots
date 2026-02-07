@@ -52,7 +52,6 @@ export async function migrateGuestLikesToUser(userId: string): Promise<void> {
     // Clear session ID
     localStorage.removeItem('shootshots_session_id')
   } catch (error) {
-    console.error('Error migrating guest likes:', error)
   }
 }
 
