@@ -1,4 +1,4 @@
-// app/(client)/page.tsx 
+// app/(client)/page.tsx - FIXED WITH SCROLLABLE CONTAINER
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -53,9 +53,9 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white flex flex-col">
       {/* Header with navigation - DARK GREEN */}
-      <header className="sticky top-0 z-50 border-b border-green-800 bg-green-900/95 backdrop-blur-sm">
+      <header className="sticky top-0 z-50 border-b border-green-800 bg-green-900/95 backdrop-blur-sm flex-none">
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             {/* Brand */}
@@ -156,8 +156,10 @@ export default function HomePage() {
       {/* Feed filters */}
       <FeedFilters onFilterChange={handleFilterChange} />
 
-      {/* Main feed */}
-      <HomeFeed filters={activeFilters} />
+      {/* Scrollable main feed container */}
+      <div className="flex-1 overflow-y-auto">
+        <HomeFeed filters={activeFilters} />
+      </div>
     </main>
   )
 }
