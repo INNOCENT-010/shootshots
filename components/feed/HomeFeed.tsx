@@ -257,6 +257,7 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
       feedCache.set(cacheKey, variedItems, seed)
       
     } catch (error) {
+      console.error('Error loading feed:', error)
     } finally {
       setLoading(false)
     }
@@ -336,16 +337,16 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
 
   return (
     <div className="w-full px-2 py-3" ref={feedRef}>
-      {/* PULL-TO-REFRESH INDICATOR */}
+      {/* PULL-TO-REFRESH INDICATOR - UPDATED: Changed from fixed to relative positioning */}
       {pullToRefresh.isPulling && pullToRefresh.distance > 0 && (
-        <div className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-2">
-          <div 
-            className="bg-green-900 text-white border border-green-700 rounded-full px-4 py-2 flex items-center gap-2 shadow-lg"
-            style={{
-              transform: `translateY(${Math.min(pullToRefresh.distance, 80)}px)`,
-              opacity: Math.min(pullToRefresh.distance / pullToRefresh.threshold, 1)
-            }}
-          >
+        <div 
+          className="relative z-40 flex justify-center mb-2 transition-all duration-200"
+          style={{
+            transform: `translateY(${Math.min(pullToRefresh.distance, 80)}px)`,
+            opacity: Math.min(pullToRefresh.distance / pullToRefresh.threshold, 1)
+          }}
+        >
+          <div className="bg-green-900 text-white border border-green-700 rounded-full px-4 py-2 flex items-center gap-2 shadow-lg">
             <ArrowDown 
               size={16} 
               className={`transition-transform ${pullToRefresh.distance > pullToRefresh.threshold ? 'rotate-180' : ''}`}
@@ -399,9 +400,9 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
         </button>
       </div>
 
-      {/* MASONRY GRID - Fixed with break-inside-avoid and proper spacing */}
+      {/* MASONRY GRID - UPDATED: Removed space-y-3 to fix mobile scrolling */}
       {filteredItems.length > 0 ? (
-        <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3 space-y-3">
+        <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3">
           {filteredItems.map((item, index) => {
             const coverMedia = item.portfolio_media?.find(m => m.display_order === 0) || 
                              item.portfolio_media?.[0]
