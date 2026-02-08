@@ -147,12 +147,14 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
     isPulling: false,
     startY: 0,
     distance: 0,
-    threshold: 60
+    threshold: 60,
+    isActive: false
   })
   
   const shareMenuRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const feedRef = useRef<HTMLDivElement>(null)
   const hasLoadedRef = useRef(false)
+  const touchStartRef = useRef<{ startY: number, startTime: number, isTop: boolean } | null>(null)
 
   // CHECK CACHE ON MOUNT
   useEffect(() => {
@@ -173,54 +175,77 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
     }
   }, [])
 
-  // PULL-TO-REFRESH
+  // PULL-TO-REFRESH - IMPROVED VERSION
   useEffect(() => {
-    let startY = 0
-    let distance = 0
-
     const handleTouchStart = (e: TouchEvent) => {
-      if (window.scrollY === 0) {
-        startY = e.touches[0].clientY
-        setPullToRefresh(prev => ({ ...prev, isPulling: true, startY }))
+      // Only activate pull-to-refresh if at the very top of the page
+      if (window.scrollY <= 10) {
+        touchStartRef.current = {
+          startY: e.touches[0].clientY,
+          startTime: Date.now(),
+          isTop: true
+        }
+      } else {
+        touchStartRef.current = {
+          startY: e.touches[0].clientY,
+          startTime: Date.now(),
+          isTop: false
+        }
       }
     }
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!pullToRefresh.isPulling) return
+      if (!touchStartRef.current || !touchStartRef.current.isTop) return
       
       const currentY = e.touches[0].clientY
-      distance = Math.max(0, currentY - startY)
+      const distance = Math.max(0, currentY - touchStartRef.current.startY)
       
-      setPullToRefresh(prev => ({ ...prev, distance }))
-      
-      if (distance > 10) {
-        e.preventDefault()
+      // Only activate pull-to-refresh if user is pulling down from top
+      if (distance > 5 && touchStartRef.current.isTop) {
+        setPullToRefresh(prev => ({
+          ...prev,
+          isPulling: true,
+          distance,
+          isActive: true
+        }))
+        
+        // Prevent default only when pull-to-refresh is active
+        if (distance > 10) {
+          e.preventDefault()
+        }
       }
     }
 
     const handleTouchEnd = () => {
-      if (pullToRefresh.isPulling && pullToRefresh.distance > pullToRefresh.threshold) {
+      if (pullToRefresh.isActive && pullToRefresh.distance > pullToRefresh.threshold) {
         refreshFeed()
       }
       
-      setPullToRefresh({
-        isPulling: false,
-        startY: 0,
-        distance: 0,
-        threshold: 60
-      })
+      // Reset with delay for smooth animation
+      setTimeout(() => {
+        setPullToRefresh({
+          isPulling: false,
+          startY: 0,
+          distance: 0,
+          threshold: 60,
+          isActive: false
+        })
+      }, 200)
+      
+      touchStartRef.current = null
     }
 
-    document.addEventListener('touchstart', handleTouchStart, { passive: false })
+    // Add event listeners with proper options
+    document.addEventListener('touchstart', handleTouchStart, { passive: true })
     document.addEventListener('touchmove', handleTouchMove, { passive: false })
-    document.addEventListener('touchend', handleTouchEnd)
+    document.addEventListener('touchend', handleTouchEnd, { passive: true })
 
     return () => {
       document.removeEventListener('touchstart', handleTouchStart)
       document.removeEventListener('touchmove', handleTouchMove)
       document.removeEventListener('touchend', handleTouchEnd)
     }
-  }, [pullToRefresh.isPulling])
+  }, [pullToRefresh.isActive, pullToRefresh.distance])
 
   // LOAD FEED ITEMS
   async function loadFeedItems(seed: number) {
@@ -274,6 +299,9 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
     
     await loadFeedItems(newSeed)
     setIsRefreshing(false)
+    
+    // Scroll to top after refresh
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   // FILTERED ITEMS - Use useMemo
@@ -337,19 +365,23 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
 
   return (
     <div className="w-full px-2 py-3" ref={feedRef}>
-      {/* PULL-TO-REFRESH INDICATOR - UPDATED: Changed from fixed to relative positioning */}
-      {pullToRefresh.isPulling && pullToRefresh.distance > 0 && (
+      {/* PULL-TO-REFRESH INDICATOR - Simplified */}
+      {(pullToRefresh.isPulling && pullToRefresh.distance > 0) && (
         <div 
-          className="relative z-40 flex justify-center mb-2 transition-all duration-200"
+          className="sticky top-0 z-40 flex justify-center -mt-3 mb-0 transition-all duration-200"
           style={{
-            transform: `translateY(${Math.min(pullToRefresh.distance, 80)}px)`,
+            transform: `translateY(${Math.min(pullToRefresh.distance - 40, 20)}px)`,
             opacity: Math.min(pullToRefresh.distance / pullToRefresh.threshold, 1)
           }}
         >
-          <div className="bg-green-900 text-white border border-green-700 rounded-full px-4 py-2 flex items-center gap-2 shadow-lg">
+          <div className={`bg-green-900 text-white border border-green-700 rounded-full px-4 py-2 flex items-center gap-2 shadow-lg transition-all duration-200 ${
+            pullToRefresh.distance > pullToRefresh.threshold ? 'scale-105' : ''
+          }`}>
             <ArrowDown 
               size={16} 
-              className={`transition-transform ${pullToRefresh.distance > pullToRefresh.threshold ? 'rotate-180' : ''}`}
+              className={`transition-transform duration-200 ${
+                pullToRefresh.distance > pullToRefresh.threshold ? 'rotate-180' : ''
+              }`}
             />
             <span className="text-sm">
               {pullToRefresh.distance > pullToRefresh.threshold ? 'Release to refresh' : 'Pull down to refresh'}
@@ -400,7 +432,7 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
         </button>
       </div>
 
-      {/* MASONRY GRID - UPDATED: Removed space-y-3 to fix mobile scrolling */}
+      {/* MASONRY GRID */}
       {filteredItems.length > 0 ? (
         <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3">
           {filteredItems.map((item, index) => {
@@ -537,7 +569,7 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
                       </div>
                     </div>
 
-                    {/* ACTION BUTTONS - Improved visibility */}
+                    {/* ACTION BUTTONS */}
                     <div 
                       className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100"
                       onClick={(e) => e.stopPropagation()}
