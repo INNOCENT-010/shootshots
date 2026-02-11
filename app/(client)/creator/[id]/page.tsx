@@ -1,4 +1,4 @@
-// app/(client)/creator/[id]/page.tsx - UPDATED WITH CV & SOCIAL LINKS (NO EMOJIS)
+// app/(client)/creator/[id]/page.tsx - MOBILE OPTIMIZED WITH MORE TAB
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -12,7 +12,8 @@ import {
   MessageCircle, BookOpen, ExternalLink,
   ThumbsUp, MessageSquare, Filter, Eye,
   Play, Heart, Bookmark, FileText, Download,
-  Github, Linkedin, Twitter, Youtube, Facebook, Globe
+  Github, Linkedin, Twitter, Youtube, Facebook, Globe,
+  Package, Layers, MoreHorizontal
 } from 'lucide-react'
 import Link from 'next/link'
 import VideoPreview from '@/components/common/VideoPreview'
@@ -49,6 +50,7 @@ interface PortfolioItem {
   category: string
   is_featured: boolean
   created_at: string
+  view_count: number
   media_count: number
   cover_media_url: string
   portfolio_media: {
@@ -81,17 +83,6 @@ interface CreatorSocialLink {
   display_order: number
 }
 
-interface Review {
-  id: string
-  rating: number
-  comment?: string
-  created_at: string
-  profiles: {
-    display_name: string
-    profile_image_url?: string
-  }
-}
-
 export default function CreatorProfilePage() {
   const params = useParams()
   const router = useRouter()
@@ -108,7 +99,7 @@ export default function CreatorProfilePage() {
   const [showContactForm, setShowContactForm] = useState(false)
   const [message, setMessage] = useState('')
   const [showReviewForm, setShowReviewForm] = useState(false)
-  const [activeTab, setActiveTab] = useState<'portfolio' | 'reviews'>('portfolio')
+  const [activeTab, setActiveTab] = useState<'portfolio' | 'reviews' | 'more'>('portfolio')
   const [userHasReviewed, setUserHasReviewed] = useState(false)
   const [showCV, setShowCV] = useState(false)
 
@@ -385,6 +376,10 @@ export default function CreatorProfilePage() {
   const memberSince = new Date(creator.created_at).getFullYear()
   const hasCV = creator.cv_url && creator.cv_is_visible === true
 
+  const hasEquipment = creatorEquipment.length > 0
+  const hasRates = creatorRates.length > 0
+  const hasSocialLinks = socialLinks.length > 0
+
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
@@ -417,13 +412,14 @@ export default function CreatorProfilePage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6 md:py-8">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-8">
-            <div className="flex flex-col md:flex-row gap-8">
-              <div className="flex flex-col items-center md:items-start gap-4">
+          {/* Creator Header - Mobile Optimized */}
+          <div className="mb-6 md:mb-8">
+            <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+              <div className="flex flex-col items-center md:items-start gap-3">
                 <div className="relative">
-                  <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
+                  <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
                     {creator.profile_image_url ? (
                       <img
                         src={creator.profile_image_url}
@@ -431,75 +427,71 @@ export default function CreatorProfilePage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <User size={48} className="text-gray-600" />
+                      <User size={40} className="text-gray-600" />
                     )}
                   </div>
                   {creator.is_available && (
                     <div className="absolute bottom-2 right-2 bg-gray-900 text-white p-1.5 rounded-full">
-                      <Check size={14} />
+                      <Check size={12} />
                     </div>
                   )}
                 </div>
 
                 <div className="text-center md:text-left">
-                  <div className="mb-2">
-                    {renderStars(creator.avg_rating, 'lg')}
+                  <div className="mb-1">
+                    {renderStars(creator.avg_rating, 'md')}
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-xs text-gray-600">
                     {creator.total_reviews > 0 ? (
                       <>
                         {creator.total_reviews} review{creator.total_reviews !== 1 ? 's' : ''}
                       </>
                     ) : (
-                      <span className="text-gray-500">No reviews yet</span>
+                      <span>No reviews yet</span>
                     )}
                   </div>
                 </div>
               </div>
 
               <div className="flex-1">
-                <div className="mb-4">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">{creator.display_name}</h1>
-                  <div className="flex flex-wrap items-center gap-4">
+                <div className="mb-3">
+                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{creator.display_name}</h1>
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
                     {creator.location && (
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <MapPin size={16} />
+                      <div className="flex items-center gap-1 text-gray-700">
+                        <MapPin size={14} />
                         <span>{creator.location}</span>
                       </div>
                     )}
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <Camera size={16} />
-                      <span className="capitalize">{creator.creator_type.replace(/_/g, ' ')}</span>
+                    <div className="flex items-center gap-1 text-gray-700">
+                      <Camera size={14} />
+                      <span className="capitalize text-sm">{creator.creator_type.replace(/_/g, ' ')}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <Calendar size={16} />
-                      <span>Member since {memberSince}</span>
+                    <div className="flex items-center gap-1 text-gray-700">
+                      <Calendar size={14} />
+                      <span className="text-sm">Since {memberSince}</span>
                     </div>
                   </div>
                 </div>
 
                 {creator.about && (
-                  <div className="mb-6">
-                    <div className="flex items-center gap-2 mb-2">
-                      <BookOpen size={16} className="text-gray-700" />
-                      <h3 className="font-semibold text-gray-900">About</h3>
-                    </div>
-                    <div className={`text-gray-700 ${!showFullAbout && 'line-clamp-3'}`}>
+                  <div className="mb-4">
+                    <div className={`text-sm text-gray-700 ${!showFullAbout && 'line-clamp-2'}`}>
                       {creator.about}
                     </div>
-                    {creator.about.length > 200 && (
+                    {creator.about.length > 150 && (
                       <button
                         onClick={() => setShowFullAbout(!showFullAbout)}
-                        className="mt-2 text-sm text-gray-900 hover:text-gray-700 font-medium flex items-center gap-1"
+                        className="mt-1 text-xs text-gray-900 hover:text-gray-700 font-medium flex items-center gap-1"
                       >
                         {showFullAbout ? (
                           <>
-                            <ChevronUp size={14} />
+                            <ChevronUp size={12} />
                             Show Less
                           </>
                         ) : (
                           <>
-                            <ChevronDown size={14} />
+                            <ChevronDown size={12} />
                             Read More
                           </>
                         )}
@@ -508,13 +500,13 @@ export default function CreatorProfilePage() {
                   </div>
                 )}
 
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setShowContactForm(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm"
                   >
-                    <MessageCircle size={16} />
-                    <span>Email Booking</span>
+                    <MessageCircle size={14} />
+                    <span>Book</span>
                   </button>
 
                   {whatsappUrl && (
@@ -522,45 +514,33 @@ export default function CreatorProfilePage() {
                       href={whatsappUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+                      className="flex items-center gap-1.5 px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm"
                     >
-                      <Phone size={16} />
-                      <span>WhatsApp</span>
+                      <Phone size={14} />
+                      <span className="hidden xs:inline">WhatsApp</span>
                     </a>
                   )}
 
                   {hasCV && (
                     <button
                       onClick={() => setShowCV(!showCV)}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+                      className="flex items-center gap-1.5 px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm"
                     >
-                      <FileText size={16} />
-                      <span>{showCV ? 'Hide CV' : 'View CV'}</span>
+                      <FileText size={14} />
+                      <span className="hidden xs:inline">{showCV ? 'Hide CV' : 'CV'}</span>
                     </button>
-                  )}
-
-                  {creator.instagram_url && !socialLinks.some(l => l.platform === 'instagram') && (
-                    <a
-                      href={creator.instagram_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
-                    >
-                      <Instagram size={16} />
-                      <span>Instagram</span>
-                    </a>
                   )}
                 </div>
 
                 {hasCV && showCV && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         {getFileIcon(creator.cv_filetype || '')}
                         <div>
-                          <div className="font-medium text-gray-900">{creator.cv_filename || 'Curriculum Vitae'}</div>
+                          <div className="font-medium text-gray-900 text-sm">Curriculum Vitae</div>
                           <div className="text-xs text-gray-600">
-                            {creator.cv_filesize ? formatFileSize(creator.cv_filesize) : ''} • Uploaded {creator.cv_uploaded_at ? formatDate(creator.cv_uploaded_at) : ''}
+                            {creator.cv_filesize ? formatFileSize(creator.cv_filesize) : ''}
                           </div>
                         </div>
                       </div>
@@ -568,10 +548,10 @@ export default function CreatorProfilePage() {
                         href={creator.cv_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                        className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-xs"
                       >
-                        <Download size={14} />
-                        <span className="text-sm">Download</span>
+                        <Download size={12} />
+                        <span>Download</span>
                       </a>
                     </div>
                   </div>
@@ -580,309 +560,260 @@ export default function CreatorProfilePage() {
             </div>
           </div>
 
+          {/* Mobile Tabs - Portfolio, Reviews, More */}
           <div className="mb-6 border-b border-gray-200">
-            <div className="flex space-x-8">
+            <div className="flex">
               <button
                 onClick={() => setActiveTab('portfolio')}
-                className={`pb-3 px-1 font-medium text-sm border-b-2 transition-colors ${
+                className={`flex-1 md:flex-none px-3 py-2.5 text-xs md:text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'portfolio'
                     ? 'border-gray-900 text-gray-900'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-1.5">
                   <Grid size={16} />
                   <span>Portfolio ({portfolioItems.length})</span>
                 </div>
               </button>
+              
               <button
                 onClick={() => setActiveTab('reviews')}
-                className={`pb-3 px-1 font-medium text-sm border-b-2 transition-colors ${
+                className={`flex-1 md:flex-none px-3 py-2.5 text-xs md:text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'reviews'
                     ? 'border-gray-900 text-gray-900'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-1.5">
                   <Star size={16} />
                   <span>Reviews ({creator.total_reviews})</span>
                 </div>
               </button>
+
+              {(hasEquipment || hasRates || hasSocialLinks) && (
+                <button
+                  onClick={() => setActiveTab('more')}
+                  className={`flex-1 md:hidden px-3 py-2.5 text-xs font-medium border-b-2 transition-colors ${
+                    activeTab === 'more'
+                      ? 'border-gray-900 text-gray-900'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-1.5">
+                    <MoreHorizontal size={16} />
+                    <span>More</span>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
 
-          {activeTab === 'portfolio' ? (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2">
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-900">Portfolio Work</h2>
-                    <div className="text-sm text-gray-600">
-                      {portfolioItems.length} project{portfolioItems.length !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                
-                  {portfolioItems.length === 0 ? (
-                    <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
-                      <div className="text-gray-600 mb-2">No portfolio work yet</div>
-                      <p className="text-sm text-gray-500">
-                        This creator hasn't uploaded any projects yet
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {portfolioItems.map((item) => {
-                        const coverMedia = item.portfolio_media?.find(m => m.display_order === 0) || 
-                                         item.portfolio_media?.[0]
-                        
-                        return (
-                          <div
-                            key={item.id}
-                            className="group cursor-pointer"
-                            onClick={() => handlePortfolioClick(item.id)}
-                          >
-                            <div className="bg-gray-50 rounded-xl overflow-hidden border border-gray-200 hover:border-gray-300 transition-all hover:shadow-lg">
-                              <div className="relative aspect-[4/3] overflow-hidden">
-                                {coverMedia?.media_type === 'image' ? (
-                                  <img
-                                    src={coverMedia.media_url || item.cover_media_url}
-                                    alt={item.title}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    loading="lazy"
-                                  />
-                                ) : (
-                                  <VideoPreview
-                                    src={coverMedia?.media_url}
-                                    poster={item.cover_media_url}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                  />
-                                )}
-                                
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end">
-                                  <div className="p-4 w-full">
-                                    <div className="text-white font-medium text-lg mb-1">{item.title || 'Untitled Project'}</div>
-                                    <div className="text-gray-300 text-sm line-clamp-2">{item.description}</div>
-                                  </div>
-                                </div>
-
-                                {coverMedia?.media_type === 'video' && (
-                                  <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm rounded-full p-2">
-                                    <Play size={14} className="text-white" />
-                                  </div>
-                                )}
-
-                                {item.is_featured && (
-                                  <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-1 border border-gray-300 flex items-center gap-1">
-                                    <Star size={14} className="fill-yellow-500 text-yellow-600" />
-                                    <span className="text-xs font-medium">Featured</span>
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                  <h3 className="font-semibold text-gray-900 line-clamp-1">
-                                    {item.title || 'Untitled Project'}
-                                  </h3>
-                                  <div className="text-xs text-gray-600">
-                                    {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                                  </div>
-                                </div>
-                                
-                                <div className="text-sm text-gray-600 line-clamp-2 mb-2">
-                                  {item.description}
-                                </div>
-                                
-                                <div className="flex items-center justify-between">
-                                  <div className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                                    {item.category}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    {item.media_count} media{item.media_count !== 1 ? 's' : ''}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                {socialLinks.length > 0 && (
-                  <div className="bg-white rounded-xl p-6 border border-gray-200">
-                    <h3 className="font-semibold text-gray-900 mb-4">Social Links</h3>
-                    <div className="space-y-3">
-                      {socialLinks.map((link) => (
-                        <a
-                          key={link.id}
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          {getSocialIcon(link.platform)}
-                          <span className="text-sm text-gray-900 capitalize">{link.platform}</span>
-                          <ExternalLink size={14} className="text-gray-500 ml-auto" />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {creatorEquipment.length > 0 && (
-                  <div className="bg-white rounded-xl p-6 border border-gray-200">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Camera size={18} className="text-gray-700" />
-                      <h3 className="font-semibold text-gray-900">Equipment & Gear</h3>
-                    </div>
-                    <div className="space-y-3">
-                      {creatorEquipment.map((equip) => (
-                        <div key={equip.id} className="flex items-start gap-3">
-                          <div className="mt-0.5">
-                            {getEquipmentIcon(equip.category)}
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900 text-sm">{equip.name}</div>
-                            {equip.description && (
-                              <div className="text-xs text-gray-600 mt-0.5">{equip.description}</div>
-                            )}
-                            <div className="text-xs text-gray-500 mt-1 capitalize">
-                              {equip.category.replace(/_/g, ' ')}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {creatorRates.length > 0 && (
-                  <div className="bg-white rounded-xl p-6 border border-gray-200">
+          {/* Desktop Sidebar - Always visible on md+ */}
+          <div className="hidden md:block">
+            {activeTab === 'portfolio' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2">
+                  {/* Portfolio Grid - Desktop */}
+                  <div className="mb-6">
                     <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <DollarSign size={18} className="text-gray-700" />
-                          <h3 className="font-semibold text-gray-900">Services & Pricing</h3>
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          {creatorRates.length} service{creatorRates.length !== 1 ? 's' : ''} available
+                      <h2 className="text-xl font-bold text-gray-900">Portfolio Work</h2>
+                      <div className="text-sm text-gray-600">
+                        {portfolioItems.length} project{portfolioItems.length !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                  
+                    {portfolioItems.length === 0 ? (
+                      <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
+                        <div className="text-gray-600 mb-2">No portfolio work yet</div>
+                        <p className="text-sm text-gray-500">
+                          This creator hasn't uploaded any projects yet
                         </p>
                       </div>
-                      {creator.rate_per_hour > 0 && (
-                        <div className="text-right">
-                          <div className="text-sm text-gray-600">Starting from</div>
-                          <div className="font-bold text-gray-900">₦{creator.rate_per_hour.toLocaleString()}/hour</div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-3">
-                      {creatorRates.slice(0, 3).map((rate) => (
-                        <div key={rate.id} className="border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
-                          <div className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 rounded-lg">
-                            <div className="flex-1">
-                              <div className="font-medium text-gray-900 capitalize">
-                                {rate.service_type.replace(/_/g, ' ')}
-                              </div>
-                              {rate.duration && (
-                                <div className="flex items-center gap-1 text-sm text-gray-600 mt-1">
-                                  <Clock size={12} />
-                                  <span>{rate.duration}</span>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {portfolioItems.map((item) => {
+                          const coverMedia = item.portfolio_media?.find(m => m.display_order === 0) || 
+                                           item.portfolio_media?.[0]
+                          
+                          return (
+                            <div
+                              key={item.id}
+                              className="group cursor-pointer"
+                              onClick={() => handlePortfolioClick(item.id)}
+                            >
+                              <div className="bg-gray-50 rounded-xl overflow-hidden border border-gray-200 hover:border-gray-300 transition-all hover:shadow-lg">
+                                <div className="relative aspect-[4/3] overflow-hidden">
+                                  {coverMedia?.media_type === 'image' ? (
+                                    <img
+                                      src={coverMedia.media_url || item.cover_media_url}
+                                      alt={item.title}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                      loading="lazy"
+                                    />
+                                  ) : (
+                                    <VideoPreview
+                                      src={coverMedia?.media_url}
+                                      poster={item.cover_media_url}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    />
+                                  )}
+                                  
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end">
+                                    <div className="p-4 w-full">
+                                      <div className="text-white font-medium text-lg mb-1">{item.title || 'Untitled Project'}</div>
+                                      <div className="text-gray-300 text-sm line-clamp-2">{item.description}</div>
+                                    </div>
+                                  </div>
+
+                                  {coverMedia?.media_type === 'video' && (
+                                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm rounded-full p-2">
+                                      <Play size={14} className="text-white" />
+                                    </div>
+                                  )}
+
+                                  {item.is_featured && (
+                                    <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-1 border border-gray-300 flex items-center gap-1">
+                                      <Star size={14} className="fill-yellow-500 text-yellow-600" />
+                                      <span className="text-xs font-medium">Featured</span>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                            <div className="text-right">
-                              <div className="font-bold text-gray-900 text-lg">
-                                ₦{rate.rate.toLocaleString()}
+
+                                <div className="p-4">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h3 className="font-semibold text-gray-900 line-clamp-1">
+                                      {item.title || 'Untitled Project'}
+                                    </h3>
+                                    <div className="text-xs text-gray-600">
+                                      {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="text-sm text-gray-600 line-clamp-2 mb-2">
+                                    {item.description}
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between">
+                                    <div className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                                      {item.category}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {item.media_count} media{item.media_count !== 1 ? 's' : ''}
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    {creatorRates.length > 3 && (
-                      <div className="mt-4 text-center">
-                        <button
-                          onClick={() => setActiveTab('portfolio')}
-                          className="text-sm text-gray-900 hover:text-gray-700 font-medium"
-                        >
-                          View all services →
-                        </button>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2">
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-900">Client Reviews</h2>
-                    <div className="text-sm text-gray-600">
-                      Average Rating: {creator.avg_rating.toFixed(1)}/5
-                    </div>
-                  </div>
+                </div>
 
-                  <div className="mb-6 bg-gray-50 rounded-xl p-6 border border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="font-bold text-gray-900 text-lg">Overall Rating</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          {renderStars(creator.avg_rating, 'lg')}
-                          <span className="text-gray-700 text-lg font-medium">
-                            {creator.avg_rating.toFixed(1)} out of 5
-                          </span>
-                        </div>
+                <div className="space-y-6">
+                  {/* Desktop Sidebar Content */}
+                  {hasSocialLinks && (
+                    <div className="bg-white rounded-xl p-6 border border-gray-200">
+                      <h3 className="font-semibold text-gray-900 mb-4">Social Links</h3>
+                      <div className="space-y-3">
+                        {socialLinks.map((link) => (
+                          <a
+                            key={link.id}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                          >
+                            {getSocialIcon(link.platform)}
+                            <span className="text-sm text-gray-900 capitalize">{link.platform}</span>
+                            <ExternalLink size={14} className="text-gray-500 ml-auto" />
+                          </a>
+                        ))}
                       </div>
-                      <div className="text-right">
-                        <div className="text-3xl font-bold text-gray-900">{creator.total_reviews}</div>
-                        <div className="text-gray-600">total reviews</div>
-                      </div>
-                    </div>
-                    
-                    {!userHasReviewed && (
-                      <div className="mt-4">
-                        <button
-                          onClick={() => setShowReviewForm(!showReviewForm)}
-                          className="w-full px-4 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium flex items-center justify-center gap-2"
-                        >
-                          <Star size={18} />
-                          <span>Write a Review</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {showReviewForm && (
-                    <div className="mb-6">
-                      <ReviewForm
-                        creatorId={creator.id}
-                        onSuccess={() => {
-                          setShowReviewForm(false)
-                        }}
-                        onCancel={() => setShowReviewForm(false)}
-                      />
                     </div>
                   )}
 
-                  <ReviewsDisplay 
-                    creatorId={creator.id}
-                    showHeader={false}
-                  />
+                  {hasEquipment && (
+                    <div className="bg-white rounded-xl p-6 border border-gray-200">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Camera size={18} className="text-gray-700" />
+                        <h3 className="font-semibold text-gray-900">Equipment & Gear</h3>
+                      </div>
+                      <div className="space-y-3">
+                        {creatorEquipment.slice(0, 5).map((equip) => (
+                          <div key={equip.id} className="flex items-start gap-3">
+                            <div className="mt-0.5">
+                              {getEquipmentIcon(equip.category)}
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900 text-sm">{equip.name}</div>
+                              {equip.description && (
+                                <div className="text-xs text-gray-600 mt-0.5">{equip.description}</div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {hasRates && (
+                    <div className="bg-white rounded-xl p-6 border border-gray-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <DollarSign size={18} className="text-gray-700" />
+                            <h3 className="font-semibold text-gray-900">Services & Pricing</h3>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            {creatorRates.length} service{creatorRates.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {creatorRates.slice(0, 3).map((rate) => (
+                          <div key={rate.id} className="border border-gray-200 rounded-lg">
+                            <div className="px-4 py-3 flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-900 text-sm capitalize">
+                                  {rate.service_type.replace(/_/g, ' ')}
+                                </div>
+                                {rate.duration && (
+                                  <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
+                                    <Clock size={10} />
+                                    <span>{rate.duration}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <div className="font-bold text-gray-900">
+                                  ₦{rate.rate.toLocaleString()}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
+            )}
 
-              <div className="space-y-6">
-                <div className="bg-white rounded-xl p-6 border border-gray-200">
-                  <h3 className="font-semibold text-gray-900 mb-4">About {creator.display_name}</h3>
-                  <div className="space-y-3">
+            {activeTab === 'reviews' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2">
+                  <ReviewsDisplay 
+                    creatorId={creator.id}
+                    showHeader={true}
+                  />
+                </div>
+                <div className="space-y-6">
+                  <div className="bg-white rounded-xl p-6 border border-gray-200">
+                    <h3 className="font-semibold text-gray-900 mb-4">About {creator.display_name}</h3>
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                         {creator.profile_image_url ? (
@@ -900,25 +831,112 @@ export default function CreatorProfilePage() {
                         <div className="text-sm text-gray-600 capitalize">{creator.creator_type.replace(/_/g, ' ')}</div>
                       </div>
                     </div>
-                    
-                    <div className="pt-3 border-t border-gray-100">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <div className="text-sm text-gray-600">Location</div>
-                          <div className="font-medium text-gray-900">{creator.location || 'Not specified'}</div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-gray-600">Member Since</div>
-                          <div className="font-medium text-gray-900">{memberSince}</div>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
 
-                {socialLinks.length > 0 && (
-                  <div className="bg-white rounded-xl p-6 border border-gray-200">
-                    <h3 className="font-semibold text-gray-900 mb-4">Connect</h3>
+          {/* Mobile Content - Conditional Rendering */}
+          <div className="md:hidden">
+            {activeTab === 'portfolio' && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-bold text-gray-900">Portfolio Work</h2>
+                  <div className="text-xs text-gray-600">
+                    {portfolioItems.length} items
+                  </div>
+                </div>
+              
+                {portfolioItems.length === 0 ? (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-gray-600 text-sm">No portfolio work yet</div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {portfolioItems.map((item) => {
+                      const coverMedia = item.portfolio_media?.[0]
+                      return (
+                        <div
+                          key={item.id}
+                          className="cursor-pointer"
+                          onClick={() => handlePortfolioClick(item.id)}
+                        >
+                          <div className="bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
+                            <div className="relative aspect-square">
+                              {coverMedia?.media_type === 'image' ? (
+                                <img
+                                  src={coverMedia.media_url || item.cover_media_url}
+                                  alt={item.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                  <Play size={20} className="text-gray-600" />
+                                </div>
+                              )}
+                              {item.media_count > 1 && (
+                                <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                                  +{item.media_count - 1}
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-2">
+                              <h3 className="font-medium text-gray-900 text-xs truncate">
+                                {item.title || 'Untitled'}
+                              </h3>
+                              <div className="flex items-center justify-between mt-1">
+                                <span className="text-xs text-gray-600 truncate max-w-[70px]">
+                                  {item.category}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <Eye size={10} className="text-gray-500" />
+                                  <span className="text-xs text-gray-600">{item.view_count}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'reviews' && (
+              <div>
+                <ReviewsDisplay 
+                  creatorId={creator.id}
+                  showHeader={true}
+                />
+              </div>
+            )}
+
+            {activeTab === 'more' && (
+              <div className="space-y-4">
+                {/* CV Section */}
+                {hasCV && !showCV && (
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileText size={18} className="text-gray-700" />
+                        <span className="font-medium text-gray-900">Curriculum Vitae</span>
+                      </div>
+                      <button
+                        onClick={() => setShowCV(true)}
+                        className="px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg hover:bg-gray-800"
+                      >
+                        View
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Social Links */}
+                {hasSocialLinks && (
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <h3 className="font-medium text-gray-900 mb-3">Social Links</h3>
                     <div className="space-y-2">
                       {socialLinks.map((link) => (
                         <a
@@ -926,22 +944,52 @@ export default function CreatorProfilePage() {
                           href={link.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors"
+                          className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100"
                         >
                           {getSocialIcon(link.platform)}
                           <span className="text-sm text-gray-900 capitalize">{link.platform}</span>
+                          <ExternalLink size={12} className="text-gray-500 ml-auto" />
                         </a>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {creatorRates.length > 0 && (
-                  <div className="bg-white rounded-xl p-6 border border-gray-200">
-                    <h3 className="font-semibold text-gray-900 mb-4">Services Offered</h3>
-                    <div className="space-y-3">
+                {/* Equipment */}
+                {hasEquipment && (
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Camera size={18} className="text-gray-700" />
+                      <h3 className="font-medium text-gray-900">Equipment & Gear</h3>
+                    </div>
+                    <div className="space-y-2">
+                      {creatorEquipment.slice(0, 3).map((equip) => (
+                        <div key={equip.id} className="flex items-start gap-2">
+                          <div className="mt-0.5">
+                            {getEquipmentIcon(equip.category)}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900 text-sm">{equip.name}</div>
+                            {equip.description && (
+                              <div className="text-xs text-gray-600">{equip.description}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Services & Pricing */}
+                {hasRates && (
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <DollarSign size={18} className="text-gray-700" />
+                      <h3 className="font-medium text-gray-900">Services & Pricing</h3>
+                    </div>
+                    <div className="space-y-2">
                       {creatorRates.slice(0, 3).map((rate) => (
-                        <div key={rate.id} className="flex items-center justify-between">
+                        <div key={rate.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                           <div>
                             <div className="font-medium text-gray-900 text-sm capitalize">
                               {rate.service_type.replace(/_/g, ' ')}
@@ -956,17 +1004,11 @@ export default function CreatorProfilePage() {
                         </div>
                       ))}
                     </div>
-                    <button
-                      onClick={() => setActiveTab('portfolio')}
-                      className="w-full mt-4 text-center text-sm text-gray-900 hover:text-gray-700 font-medium"
-                    >
-                      View all services →
-                    </button>
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </main>
 
@@ -999,11 +1041,6 @@ export default function CreatorProfilePage() {
               
               <div className="text-xs text-gray-600">
                 This message will be sent to the creator via Shootshots messaging system.
-                {creator.whatsapp_number && (
-                  <div className="mt-1">
-                    You can also contact them directly through email: {creator.email}
-                  </div>
-                )}
               </div>
               
               <div className="flex gap-3">
