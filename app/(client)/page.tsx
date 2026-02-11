@@ -299,14 +299,7 @@ export default function HomePage() {
                                 <User size={18} />
                                 Edit Profile
                               </Link>
-                              <Link 
-                                href="/dashboard/settings" 
-                                className="flex items-center gap-3 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
-                                onClick={() => setDropdownOpen(false)}
-                              >
-                                <Settings size={18} />
-                                Settings
-                              </Link>
+                              
                             </div>
                             
                             {/* Logout */}
