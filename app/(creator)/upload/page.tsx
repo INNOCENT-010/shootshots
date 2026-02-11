@@ -1,35 +1,33 @@
-// app/(creator)/upload/page.tsx - COMPLETE UPDATED THEME
+// app/(creator)/upload/page.tsx - WITH DROPDOWN & TYPEABLE CATEGORY
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { supabase } from '@/lib/supabase/client'
 import { 
   Upload, Image, Video, AlertCircle, Check, X, 
-  Trash2, File, Loader2, Folder, Grid, Camera, Film
+  Trash2, File, Loader2, Camera, Film, ArrowLeft, Tag, ChevronDown
 } from 'lucide-react'
 
-// Categories based on creator type
-const categoryOptions = {
-  photographer: [
-    'Portrait', 'Wedding', 'Fashion', 'Commercial', 'Brand Content',
-    'Product', 'Event', 'Lifestyle', 'Editorial', 'Documentary',
-    'Real Estate', 'Architecture', 'Food', 'Travel', 'Street', 'Sports'
-  ],
-  videographer: [
-    'Short Movie', 'Movie', 'Music Video', 'Corporate', 'Interview',
-    'YouTube Content', 'Vlog', 'Live Coverage', 'Social Media Content'
-  ],
-  mobile_photographer: ['Mobile shot', 'Lifestyle', 'Street', 'Social Media Content'],
-  mobile_videographer: ['Social Media Content', 'Vlog', 'Interview'],
-  hybrid: [
-    'Portrait', 'Wedding', 'Fashion', 'Commercial', 'Brand Content',
-    'Product', 'Event', 'Lifestyle', 'Music Video', 'Corporate',
-    'Real Estate', 'Travel', 'Social Media Content', 'Vlog'
-  ]
-}
+// Suggested categories for dropdown and autocomplete
+const SUGGESTED_CATEGORIES = [
+  'Portrait', 'Wedding', 'Fashion', 'Commercial', 'Brand Content',
+  'Product', 'Event', 'Lifestyle', 'Editorial', 'Documentary',
+  'Real Estate', 'Architecture', 'Food', 'Travel', 'Street', 'Sports',
+  'Music Video', 'Short Film', 'Corporate Video', 'Interview',
+  'YouTube Content', 'Vlog', 'Social Media Content', 'Mobile Photography',
+  'Digital Art', 'Animation', 'Comic Art', 'Game Art', 'Graphic Design',
+  'Nature', 'Wildlife', 'Urban', 'Abstract', 'Conceptual', 'Fine Art',
+  'Advertising', 'Packaging', 'Logo Design', 'Typography', 'Illustration',
+  'Motion Graphics', '3D Animation', 'Character Design', 'Storyboard',
+  'Product Photography', 'Beauty', 'Fitness', 'Healthcare', 'Education',
+  'Wedding Photography', 'Event Photography', 'Fashion Photography',
+  'Portrait Photography', 'Product Photography', 'Real Estate Photography',
+  'Food Photography', 'Travel Photography', 'Sports Photography',
+  'Commercial Photography', 'Documentary Photography'
+]
 
 interface MediaFile {
   id: string
@@ -37,16 +35,6 @@ interface MediaFile {
   previewUrl: string
   type: 'image' | 'video'
   size: number
-}
-
-interface UserLimits {
-  max_posts: number
-  max_media: number
-  max_media_per_post: number
-  posts_used: number
-  media_used: number
-  remaining_posts: number
-  remaining_media: number
 }
 
 export default function UploadPage() {
@@ -57,17 +45,6 @@ export default function UploadPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   
-  // User limits
-  const [userLimits, setUserLimits] = useState<UserLimits>({
-    max_posts: 3,
-    max_media: 5,
-    max_media_per_post: 5,
-    posts_used: 0,
-    media_used: 0,
-    remaining_posts: 3,
-    remaining_media: 5
-  })
-
   // Form state
   const [formData, setFormData] = useState({
     title: '',
@@ -77,85 +54,58 @@ export default function UploadPage() {
   
   // Multiple media files
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
-  const [creatorType, setCreatorType] = useState<keyof typeof categoryOptions>('photographer')
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
+  const [categorySuggestions, setCategorySuggestions] = useState<string[]>([])
+  const [isTypingCategory, setIsTypingCategory] = useState(false)
 
-  // Load user limits and profile
+  const categoryInputRef = useRef<HTMLInputElement>(null)
+  const categoryDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Load user data
   useEffect(() => {
     if (user) {
-      loadUserData()
+      setLoading(false)
     } else {
       setLoading(false)
     }
   }, [user])
 
-  async function loadUserData() {
-    if (!user) {
-      setError('User not found')
-      setLoading(false)
-      return
+  // Filter categories based on input
+  useEffect(() => {
+    if (formData.category.trim() && isTypingCategory) {
+      const searchTerm = formData.category.toLowerCase()
+      const filtered = SUGGESTED_CATEGORIES.filter(category =>
+        category.toLowerCase().includes(searchTerm)
+      ).slice(0, 8) // Show only top 8 suggestions
+      setCategorySuggestions(filtered)
+      setShowCategoryDropdown(true)
+    } else if (!isTypingCategory && formData.category.trim()) {
+      // When not typing, show all categories
+      setCategorySuggestions(SUGGESTED_CATEGORIES.slice(0, 15))
+    } else {
+      setCategorySuggestions(SUGGESTED_CATEGORIES.slice(0, 15))
     }
+  }, [formData.category, isTypingCategory])
 
-    try {
-      // Get user's creator type and current usage
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('creator_type, current_plan_type, posts_used, media_used')
-        .eq('id', user.id)
-        .single()
-
-      if (profileError) throw profileError
-
-      if (profile?.creator_type) {
-        setCreatorType(profile.creator_type as keyof typeof categoryOptions)
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categoryDropdownRef.current && 
+          !categoryDropdownRef.current.contains(event.target as Node) &&
+          categoryInputRef.current && 
+          !categoryInputRef.current.contains(event.target as Node)) {
+        setShowCategoryDropdown(false)
       }
-
-      // Get plan limits directly
-      const { data: plan } = await supabase
-        .from('subscription_plans')
-        .select('max_posts, max_media, max_media_per_post')
-        .eq('plan_type', profile.current_plan_type || 'free')
-        .single()
-
-      const maxPosts = plan?.max_posts || 3
-      const maxMedia = plan?.max_media || 5
-      const maxPerPost = plan?.max_media_per_post || 5
-      const postsUsed = profile.posts_used || 0
-      const mediaUsed = profile.media_used || 0
-
-      setUserLimits({
-        max_posts: maxPosts,
-        max_media: maxMedia,
-        max_media_per_post: maxPerPost,
-        posts_used: postsUsed,
-        media_used: mediaUsed,
-        remaining_posts: Math.max(0, maxPosts - postsUsed),
-        remaining_media: Math.max(0, maxMedia - mediaUsed)
-      })
-
-    } catch (error) {
-    } finally {
-      setLoading(false)
     }
-  }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     
     if (files.length === 0) return
-
-    // Check if adding these files would exceed max per post
-    const totalAfterAdd = mediaFiles.length + files.length
-    if (totalAfterAdd > userLimits.max_media_per_post) {
-      setError(`Maximum ${userLimits.max_media_per_post} media files per post allowed.`)
-      return
-    }
-
-    // Check if adding these files would exceed total media limit
-    const mediaAfterAdd = userLimits.media_used + files.length
-    if (mediaAfterAdd > userLimits.max_media) {
-      setError(`Adding ${files.length} files would exceed your media limit of ${userLimits.max_media}.`)
-      return
-    }
 
     // Process each file
     const newMediaFiles: MediaFile[] = files.map(file => {
@@ -181,7 +131,12 @@ export default function UploadPage() {
       }
     }).filter(Boolean) as MediaFile[]
 
-    // Add to existing files
+    // Add to existing files (limit to 20 per portfolio item)
+    if (mediaFiles.length + newMediaFiles.length > 20) {
+      setError('Maximum 20 files per portfolio item')
+      return
+    }
+
     setMediaFiles(prev => [...prev, ...newMediaFiles])
     setError('')
     e.target.value = ''
@@ -206,6 +161,27 @@ export default function UploadPage() {
     })
   }
 
+  const handleCategoryInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, category: e.target.value }))
+    setIsTypingCategory(true)
+    if (e.target.value.trim()) {
+      setShowCategoryDropdown(true)
+    }
+  }
+
+  const selectCategory = (category: string) => {
+    setFormData(prev => ({ ...prev, category }))
+    setShowCategoryDropdown(false)
+    setIsTypingCategory(false)
+  }
+
+  const toggleCategoryDropdown = () => {
+    setShowCategoryDropdown(!showCategoryDropdown)
+    if (!showCategoryDropdown) {
+      setIsTypingCategory(false)
+    }
+  }
+
   const validateForm = () => {
     if (!user) {
       setError('You must be logged in to upload')
@@ -217,23 +193,8 @@ export default function UploadPage() {
       return false
     }
 
-    if (mediaFiles.length > userLimits.max_media_per_post) {
-      setError(`Maximum ${userLimits.max_media_per_post} media files per post allowed`)
-      return false
-    }
-
-    if (!formData.category) {
-      setError('Please select a category')
-      return false
-    }
-
-    if (userLimits.posts_used >= userLimits.max_posts) {
-      setError(`Post limit reached (${userLimits.max_posts} posts maximum)`)
-      return false
-    }
-
-    if (userLimits.media_used + mediaFiles.length > userLimits.max_media) {
-      setError(`Adding ${mediaFiles.length} files would exceed your media limit of ${userLimits.max_media}`)
+    if (!formData.category.trim()) {
+      setError('Please enter or select a category')
       return false
     }
 
@@ -257,21 +218,6 @@ export default function UploadPage() {
     setSuccess('')
 
     try {
-      // Validate category based on creator type
-      const allowedCategories = categoryOptions[creatorType] || categoryOptions.photographer
-      if (!allowedCategories.includes(formData.category)) {
-        throw new Error(`Category "${formData.category}" is not allowed for ${creatorType}`)
-      }
-
-      // Check user limits
-      if (userLimits.posts_used >= userLimits.max_posts) {
-        throw new Error(`You have reached your post limit (${userLimits.max_posts} posts).`)
-      }
-
-      if (userLimits.media_used + mediaFiles.length > userLimits.max_media) {
-        throw new Error(`Adding ${mediaFiles.length} files would exceed your media limit of ${userLimits.max_media}`)
-      }
-
       // Upload all media files to storage
       const uploadedMedia: Array<{
         media_url: string
@@ -309,12 +255,12 @@ export default function UploadPage() {
         })
       }
 
-      // Create NEW portfolio item (post) in database
+      // Create portfolio item in database
       const postData = {
         creator_id: user.id,
         title: formData.title || null,
         description: formData.description || null,
-        category: formData.category,
+        category: formData.category.trim(),
         is_featured: false,
         media_count: uploadedMedia.length,
         cover_media_url: uploadedMedia[0]?.media_url || null
@@ -327,10 +273,10 @@ export default function UploadPage() {
         .single()
 
       if (itemError) {
-        throw new Error(`Failed to create portfolio post: ${itemError.message}`)
+        throw new Error(`Failed to create portfolio item: ${itemError.message}`)
       }
 
-      // Create portfolio_media entries for the NEW post
+      // Create portfolio_media entries
       const mediaEntries = uploadedMedia.map(media => ({
         portfolio_item_id: portfolioItem.id,
         media_url: media.media_url,
@@ -352,27 +298,8 @@ export default function UploadPage() {
         throw new Error(`Failed to save media details: ${mediaError.message}`)
       }
 
-      // Update user usage counts
-      await supabase
-        .from('profiles')
-        .update({
-          posts_used: userLimits.posts_used + 1,
-          media_used: userLimits.media_used + mediaFiles.length,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
-
-      // Update local state
-      setUserLimits(prev => ({
-        ...prev,
-        posts_used: prev.posts_used + 1,
-        media_used: prev.media_used + mediaFiles.length,
-        remaining_posts: Math.max(0, prev.max_posts - (prev.posts_used + 1)),
-        remaining_media: Math.max(0, prev.max_media - (prev.media_used + mediaFiles.length))
-      }))
-
       // Success
-      setSuccess(`Successfully created new portfolio post with ${mediaFiles.length} media file${mediaFiles.length === 1 ? '' : 's'}!`)
+      setSuccess(`Portfolio item created successfully with ${mediaFiles.length} file${mediaFiles.length === 1 ? '' : 's'}!`)
       
       // Clear form
       setFormData({
@@ -407,11 +334,11 @@ export default function UploadPage() {
     return (
       <div className="min-h-screen bg-white">
         <div className="max-w-4xl mx-auto text-center py-20">
-          <div className="text-2xl font-bold mb-4 text-gray-900">Authentication Required</div>
-          <p className="text-gray-600 mb-6">You must be logged in to upload portfolio posts.</p>
+          <div className="text-2xl font-semibold mb-4 text-gray-900">Authentication Required</div>
+          <p className="text-gray-600 mb-6">You must be logged in to upload portfolio items.</p>
           <Link 
             href="/login" 
-            className="inline-block px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+            className="inline-block px-6 py-3 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors"
           >
             Go to Login
           </Link>
@@ -434,53 +361,20 @@ export default function UploadPage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 text-gray-900">Upload Portfolio Post</h1>
-          <p className="text-gray-600">
-            Upload multiple images/videos to create a portfolio post
-          </p>
+          <Link 
+            href="/dashboard" 
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+          >
+            <ArrowLeft size={16} />
+            Back to Dashboard
+          </Link>
           
-          {/* User limits info */}
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="flex items-center gap-2 mb-1">
-                <Folder className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-gray-600">Posts Limit</span>
-              </div>
-              <div className="text-lg font-bold text-gray-900">
-                {userLimits.posts_used} / {userLimits.max_posts}
-              </div>
-              <div className="text-xs text-gray-500">
-                {userLimits.remaining_posts} posts remaining
-              </div>
-            </div>
-            
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="flex items-center gap-2 mb-1">
-                <Image className="h-4 w-4 text-green-600" />
-                <span className="text-sm text-gray-600">Media Limit</span>
-              </div>
-              <div className="text-lg font-bold text-gray-900">
-                {userLimits.media_used} / {userLimits.max_media}
-              </div>
-              <div className="text-xs text-gray-500">
-                {userLimits.remaining_media} media remaining
-              </div>
-            </div>
-            
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="flex items-center gap-2 mb-1">
-                <Grid className="h-4 w-4 text-purple-600" />
-                <span className="text-sm text-gray-600">Per Post Limit</span>
-              </div>
-              <div className="text-lg font-bold text-gray-900">
-                Max {userLimits.max_media_per_post} per post
-              </div>
-              <div className="text-xs text-gray-500">
-                {mediaFiles.length} selected
-              </div>
-            </div>
-          </div>
+          <h1 className="text-2xl font-semibold mb-2 text-gray-900">Upload New Portfolio Item</h1>
+          <p className="text-gray-600">
+            Showcase your work with images and videos
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -489,7 +383,7 @@ export default function UploadPage() {
             <label className="block text-sm font-medium mb-3 text-gray-900">
               Upload Media Files *
               <span className="text-gray-500 text-sm font-normal ml-2">
-                Select multiple images/videos (max {userLimits.max_media_per_post} per post)
+                Select multiple images/videos (max 20 per item)
               </span>
             </label>
             
@@ -516,14 +410,14 @@ export default function UploadPage() {
                         PNG, JPG, GIF, MP4 up to 50MB each
                       </div>
                       <div className="text-xs text-gray-400 mt-2">
-                        You can upload up to {userLimits.max_media_per_post} files per post
+                        You can upload up to 20 files per portfolio item
                       </div>
                     </div>
                   </div>
                 ) : (
                   <div>
                     <div className="text-sm text-gray-500 mb-4">
-                      Click to add more files ({mediaFiles.length}/{userLimits.max_media_per_post})
+                      Click to add more files ({mediaFiles.length}/20)
                     </div>
                   </div>
                 )}
@@ -543,7 +437,7 @@ export default function UploadPage() {
                   <button
                     type="button"
                     onClick={() => setMediaFiles([])}
-                    className="text-sm text-red-600 hover:text-red-700 flex items-center gap-1"
+                    className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
                   >
                     <Trash2 size={14} />
                     Clear All
@@ -577,7 +471,7 @@ export default function UploadPage() {
                             <button
                               type="button"
                               onClick={() => removeMediaFile(file.id)}
-                              className="p-1 bg-red-600 hover:bg-red-700 rounded text-white"
+                              className="p-1 bg-white hover:bg-gray-100 rounded text-gray-900"
                             >
                               <X size={14} />
                             </button>
@@ -588,17 +482,9 @@ export default function UploadPage() {
                         </div>
                         
                         {index === 0 && (
-                          <div className="absolute top-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded">
+                          <div className="absolute top-2 left-2 bg-gray-900 text-white text-xs px-2 py-1 rounded">
                             Cover
                           </div>
-                        )}
-                      </div>
-                      
-                      <div className="absolute top-2 right-2">
-                        {file.type === 'image' ? (
-                          <Camera className="h-4 w-4 text-blue-600 bg-white/80 p-0.5 rounded" />
-                        ) : (
-                          <Film className="h-4 w-4 text-green-600 bg-white/80 p-0.5 rounded" />
                         )}
                       </div>
                       
@@ -631,19 +517,19 @@ export default function UploadPage() {
                 <div className="mt-4 text-sm text-gray-500">
                   <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-1">
-                      <Camera className="h-4 w-4 text-blue-600" />
+                      <Camera className="h-4 w-4 text-gray-700" />
                       <span>
                         {mediaFiles.filter(f => f.type === 'image').length} image(s)
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Film className="h-4 w-4 text-green-600" />
+                      <Film className="h-4 w-4 text-gray-700" />
                       <span>
                         {mediaFiles.filter(f => f.type === 'video').length} video(s)
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <File className="h-4 w-4 text-gray-600" />
+                      <File className="h-4 w-4 text-gray-700" />
                       <span>
                         Total size: {formatFileSize(mediaFiles.reduce((sum, f) => sum + f.size, 0))}
                       </span>
@@ -658,13 +544,13 @@ export default function UploadPage() {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-900">
-                  Post Title (Optional)
+                  Title (Optional)
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full p-3 bg-white border border-gray-300 rounded-lg focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
+                  className="w-full p-3 bg-white border border-gray-300 rounded-lg focus:border-gray-800 focus:outline-none text-gray-900"
                   placeholder="e.g., Wedding Photography in Lagos"
                   disabled={uploading}
                 />
@@ -677,7 +563,7 @@ export default function UploadPage() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full p-3 bg-white border border-gray-300 rounded-lg focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 h-32 resize-none"
+                  className="w-full p-3 bg-white border border-gray-300 rounded-lg focus:border-gray-800 focus:outline-none text-gray-900 h-32 resize-none"
                   placeholder="Describe this collection of work..."
                   disabled={uploading}
                 />
@@ -689,47 +575,105 @@ export default function UploadPage() {
                 <label className="block text-sm font-medium mb-2 text-gray-900">
                   Category *
                 </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full p-3 bg-white border border-gray-300 rounded-lg focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900"
-                  required
-                  disabled={uploading}
-                >
-                  <option value="" className="text-gray-500">Select a category</option>
-                  {categoryOptions[creatorType]?.map((category) => (
-                    <option key={category} value={category} className="text-gray-900">
-                      {category}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative" ref={categoryDropdownRef}>
+                  <div className="relative">
+                    <input
+                      ref={categoryInputRef}
+                      type="text"
+                      value={formData.category}
+                      onChange={handleCategoryInputChange}
+                      onFocus={() => setShowCategoryDropdown(true)}
+                      className="w-full p-3 bg-white border border-gray-300 rounded-lg focus:border-gray-800 focus:outline-none text-gray-900 pr-10"
+                      placeholder="Type or select a category"
+                      required
+                      disabled={uploading}
+                    />
+                    <button
+                      type="button"
+                      onClick={toggleCategoryDropdown}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <ChevronDown size={18} />
+                    </button>
+                  </div>
+                  
+                  {/* Category dropdown */}
+                  {showCategoryDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      <div className="p-2">
+                        {/* Search results header */}
+                        {isTypingCategory && formData.category.trim() && (
+                          <div className="px-3 py-2 border-b border-gray-200">
+                            <div className="text-xs text-gray-500">
+                              Suggestions for "{formData.category}"
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Popular categories header */}
+                        {!isTypingCategory && (
+                          <div className="px-3 py-2 border-b border-gray-200">
+                            <div className="text-xs text-gray-500">
+                              Popular Categories
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Categories list */}
+                        <div className="max-h-48 overflow-y-auto">
+                          {categorySuggestions.length > 0 ? (
+                            categorySuggestions.map((category) => (
+                              <button
+                                key={category}
+                                type="button"
+                                onClick={() => selectCategory(category)}
+                                className="w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-gray-100 rounded flex items-center gap-2"
+                              >
+                                <Tag size={12} className="text-gray-400" />
+                                {category}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-3 py-4 text-center text-sm text-gray-500">
+                              No categories found. Type to create a new one.
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Custom category notice */}
+                        <div className="px-3 py-2 border-t border-gray-200">
+                          <div className="text-xs text-gray-500">
+                            Can't find your category? Keep typing to create a new one.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="mt-1 text-xs text-gray-500">
-                  Available categories based on your creator type: <span className="font-medium">{creatorType}</span>
+                  Select from popular categories or type your own custom category
                 </div>
               </div>
 
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                 <h4 className="font-medium mb-3 text-gray-900">Upload Summary</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
                     <span className="text-gray-600">Files to upload:</span>
                     <span className="font-medium">{mediaFiles.length} file(s)</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Posts used:</span>
-                    <span className="font-medium">{userLimits.posts_used} → {userLimits.posts_used + 1}</span>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Images:</span>
+                    <span className="font-medium">{mediaFiles.filter(f => f.type === 'image').length}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Media used:</span>
-                    <span className="font-medium">{userLimits.media_used} → {userLimits.media_used + mediaFiles.length}</span>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Videos:</span>
+                    <span className="font-medium">{mediaFiles.filter(f => f.type === 'video').length}</span>
                   </div>
                   <div className="border-t border-gray-200 pt-2 mt-2">
                     <div className="flex justify-between font-medium text-gray-900">
-                      <span>Total after upload:</span>
-                      <span className="text-right">
-                        <div>{userLimits.posts_used + 1}/{userLimits.max_posts} posts</div>
-                        <div>{userLimits.media_used + mediaFiles.length}/{userLimits.max_media} media</div>
-                      </span>
+                      <span>Ready to upload</span>
+                      <span>{mediaFiles.length} file{mediaFiles.length === 1 ? '' : 's'}</span>
                     </div>
                   </div>
                 </div>
@@ -739,7 +683,7 @@ export default function UploadPage() {
 
           {error && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center gap-2 text-red-700">
+              <div className="flex items-center gap-2 text-red-800">
                 <AlertCircle size={16} />
                 <span>{error}</span>
               </div>
@@ -748,11 +692,11 @@ export default function UploadPage() {
 
           {success && (
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center gap-2 text-green-700">
+              <div className="flex items-center gap-2 text-green-800">
                 <Check size={16} />
                 <span>{success}</span>
               </div>
-              <div className="text-sm text-green-600 mt-1">
+              <div className="text-sm text-green-700 mt-1">
                 Redirecting to dashboard...
               </div>
             </div>
@@ -761,8 +705,8 @@ export default function UploadPage() {
           <div className="pt-4">
             <button
               type="submit"
-              disabled={uploading || mediaFiles.length === 0 || !formData.category}
-              className="w-full p-4 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled={uploading || mediaFiles.length === 0 || !formData.category.trim()}
+              className="w-full p-4 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {uploading ? (
                 <>
@@ -770,7 +714,7 @@ export default function UploadPage() {
                   Uploading {mediaFiles.length} file{mediaFiles.length === 1 ? '' : 's'}...
                 </>
               ) : (
-                `Upload Post (${mediaFiles.length} file${mediaFiles.length === 1 ? '' : 's'})`
+                `Upload Portfolio Item (${mediaFiles.length} file${mediaFiles.length === 1 ? '' : 's'})`
               )}
             </button>
             
@@ -779,7 +723,6 @@ export default function UploadPage() {
                 href="/dashboard" 
                 className="text-sm text-gray-500 hover:text-gray-700 inline-flex items-center gap-1"
               >
-                <X size={14} />
                 Cancel and return to dashboard
               </Link>
             </div>

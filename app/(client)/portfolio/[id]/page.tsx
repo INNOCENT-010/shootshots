@@ -1,13 +1,14 @@
+// app/(client)/portfolio/[id]/page.tsx - FIXED CONTAINER LAYOUT
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { 
-  ArrowLeft, Heart, Star, Share2, Eye, MessageCircle, 
+  ArrowLeft, Heart, Star, Share2, Eye, 
   User, MapPin, Calendar, X, ChevronLeft, ChevronRight,
   Camera, Video as VideoIcon, Maximize2, Grid, Download,
-  Bookmark, MoreVertical, Flag
+  MoreVertical, Flag, ChevronDown, ChevronUp
 } from 'lucide-react'
 import Link from 'next/link'
 import LikeSaveButtons from '@/components/interactions/LikeSaveButtons'
@@ -32,6 +33,8 @@ interface PortfolioItem {
     location?: string
     profile_image_url?: string
     creator_type?: string
+    avg_rating?: number
+    total_reviews?: number
   }
   portfolio_media: {
     id: string
@@ -53,12 +56,11 @@ export default function PortfolioDetailPage() {
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [showShareMenu, setShowShareMenu] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
-  const [viewCountUpdated, setViewCountUpdated] = useState(false)
+  const [showFullDescription, setShowFullDescription] = useState(false)
 
   useEffect(() => {
     if (itemId) {
       loadPortfolioItem()
-      // Track view when page loads
       trackPageView()
     }
   }, [itemId])
@@ -74,7 +76,9 @@ export default function PortfolioDetailPage() {
             display_name,
             location,
             profile_image_url,
-            creator_type
+            creator_type,
+            avg_rating,
+            total_reviews
           ),
           portfolio_media (
             id,
@@ -104,19 +108,8 @@ export default function PortfolioDetailPage() {
 
   const trackPageView = useCallback(async () => {
     try {
-      console.log('🔄 Tracking view for portfolio detail:', itemId)
-      
-      const success = await trackView(itemId)
-      
-      if (success) {
-        console.log('✅ View count updated on detail page')
-        setViewCountUpdated(true)
-        // Refresh the item data to show updated view count
-        await loadPortfolioItem()
-      } else {
-        console.log('❌ Failed to update view count on detail page')
-      }
-      
+      await trackView(itemId)
+      await loadPortfolioItem()
     } catch (error) {
       console.error('Error tracking view on detail page:', error)
     }
@@ -212,7 +205,7 @@ export default function PortfolioDetailPage() {
       <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="text-gray-600 mb-4">{error || 'Post not found'}</div>
-          <Link href="/" className="text-green-800 hover:underline font-medium">
+          <Link href="/" className="text-gray-900 hover:underline font-medium">
             ← Back to home
           </Link>
         </div>
@@ -227,100 +220,78 @@ export default function PortfolioDetailPage() {
     month: 'long',
     day: 'numeric'
   })
+  
+  const descriptionLength = item.description?.length || 0
+  const descriptionExceedsLimit = descriptionLength > 200
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
-      {/* DARK GREEN HEADER */}
-      <header className="sticky top-0 z-50 border-b border-green-800 bg-green-900/95 backdrop-blur-sm">
+      {/* BLACK HEADER */}
+      <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <button
               onClick={() => router.back()}
-              className="flex items-center gap-2 text-green-200 hover:text-white"
+              className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
             >
               <ArrowLeft size={20} />
               <span className="hidden sm:inline">Back</span>
             </button>
             
-            <div className="flex items-center gap-4">
-              <div className="hidden sm:flex items-center gap-4">
-                <LikeSaveButtons 
-                  itemId={item.id}
-                  initialLikeCount={item.like_count || 0}
-                  initialSaveCount={item.save_count || 0}
-                  size="md"
-                  showCounts={true}
-                />
-                
-                {/* Share dropdown */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowShareMenu(!showShareMenu)}
-                    className="p-2 hover:bg-green-800 rounded-lg text-green-200 hover:text-white"
-                  >
-                    <Share2 size={20} />
-                  </button>
-                  
-                  {showShareMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-green-800 border border-green-700 rounded-lg shadow-xl z-50">
-                      <div className="py-2">
-                        <button
-                          onClick={copyLink}
-                          className="w-full text-left px-4 py-2 text-sm text-green-200 hover:bg-green-700 hover:text-white"
-                        >
-                          Copy Link
-                        </button>
-                        <button
-                          onClick={shareToWhatsApp}
-                          className="w-full text-left px-4 py-2 text-sm text-green-200 hover:bg-green-700 hover:text-white"
-                        >
-                          Share on WhatsApp
-                        </button>
-                        <button
-                          onClick={shareToTwitter}
-                          className="w-full text-left px-4 py-2 text-sm text-green-200 hover:bg-green-700 hover:text-white"
-                        >
-                          Share on Twitter
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div className="text-center">
+              <h1 className="text-sm font-medium text-gray-700">PORTFOLIO DETAIL</h1>
+            </div>
 
-              {/* Mobile menu */}
-              <div className="relative sm:hidden">
-                <button
-                  onClick={() => setShowMoreMenu(!showMoreMenu)}
-                  className="p-2 hover:bg-green-800 rounded-lg text-green-200 hover:text-white"
-                >
-                  <MoreVertical size={20} />
-                </button>
-                
-                {showMoreMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-green-800 border border-green-700 rounded-lg shadow-xl z-50">
-                    <div className="py-2">
-                      <div className="px-4 py-2 border-b border-green-700">
-                        <div className="text-sm font-medium text-green-200">Actions</div>
-                      </div>
-                      <button
-                        onClick={downloadMedia}
-                        className="w-full text-left px-4 py-2 text-sm text-green-200 hover:bg-green-700 hover:text-white flex items-center gap-2"
-                      >
-                        <Download size={14} />
-                        Download
-                      </button>
-                      <button
-                        onClick={reportPost}
-                        className="w-full text-left px-4 py-2 text-sm text-red-300 hover:bg-green-700 hover:text-red-200 flex items-center gap-2"
-                      >
-                        <Flag size={14} />
-                        Report
-                      </button>
+            {/* Mobile menu */}
+            <div className="relative">
+              <button
+                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                className="p-2 hover:bg-gray-100 rounded-lg text-gray-700 hover:text-gray-900"
+              >
+                <MoreVertical size={20} />
+              </button>
+              
+              {showMoreMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
+                  <div className="py-2">
+                    <div className="px-4 py-2 border-b border-gray-200">
+                      <div className="text-sm font-medium text-gray-900">Actions</div>
                     </div>
+                    <button
+                      onClick={copyLink}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                    >
+                      Copy Link
+                    </button>
+                    <button
+                      onClick={shareToWhatsApp}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                    >
+                      Share on WhatsApp
+                    </button>
+                    <button
+                      onClick={shareToTwitter}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                    >
+                      Share on Twitter
+                    </button>
+                    <button
+                      onClick={downloadMedia}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 flex items-center gap-2"
+                    >
+                      <Download size={14} />
+                      Download
+                    </button>
+                    <button
+                      onClick={reportPost}
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 hover:text-red-700 flex items-center gap-2"
+                    >
+                      <Flag size={14} />
+                      Report
+                    </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -331,13 +302,12 @@ export default function PortfolioDetailPage() {
           {/* Left Column: Media Gallery */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-              {/* Main media display */}
               <div className="relative aspect-[4/3] bg-gray-50">
                 {currentMedia?.media_type === 'image' ? (
                   <img
                     src={currentMedia.media_url}
                     alt={item.title || `Image ${currentMediaIndex + 1}`}
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain cursor-pointer"
                     onClick={() => setShowFullscreen(true)}
                   />
                 ) : (
@@ -346,19 +316,18 @@ export default function PortfolioDetailPage() {
                       src={currentMedia?.media_url}
                       className="w-full h-full object-contain"
                       controls
-                      autoPlay
+                      autoPlay={false}
                       playsInline
                     />
                   </div>
                 )}
 
-                {/* Navigation arrows for multiple media */}
                 {item.media_count > 1 && (
                   <>
                     {currentMediaIndex > 0 && (
                       <button
                         onClick={prevMedia}
-                        className="absolute left-4 top-1/2 transform -translate-y-1/2 p-3 bg-gray-800/60 text-white rounded-full hover:bg-gray-800/80 transition-colors"
+                        className="absolute left-4 top-1/2 transform -translate-y-1/2 p-3 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
                       >
                         <ChevronLeft size={24} />
                       </button>
@@ -366,7 +335,7 @@ export default function PortfolioDetailPage() {
                     {currentMediaIndex < item.media_count - 1 && (
                       <button
                         onClick={nextMedia}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 p-3 bg-gray-800/60 text-white rounded-full hover:bg-gray-800/80 transition-colors"
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 p-3 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
                       >
                         <ChevronRight size={24} />
                       </button>
@@ -374,32 +343,28 @@ export default function PortfolioDetailPage() {
                   </>
                 )}
 
-                {/* Media counter */}
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800/70 text-white px-3 py-1.5 rounded-full text-sm">
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm">
                   {currentMediaIndex + 1} / {item.media_count}
                 </div>
 
-                {/* Fullscreen button */}
                 <button
                   onClick={() => setShowFullscreen(true)}
-                  className="absolute top-4 right-4 p-2 bg-gray-800/60 text-white rounded-full hover:bg-gray-800/80"
+                  className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-black/80"
                 >
                   <Maximize2 size={20} />
                 </button>
 
-                {/* Download button */}
                 <button
                   onClick={downloadMedia}
-                  className="absolute top-4 right-16 p-2 bg-gray-800/60 text-white rounded-full hover:bg-gray-800/80"
+                  className="absolute top-4 right-16 p-2 bg-black/60 text-white rounded-full hover:bg-black/80"
                 >
                   <Download size={20} />
                 </button>
               </div>
 
-              {/* Thumbnail strip */}
               {item.media_count > 1 && (
                 <div className="p-4 border-t border-gray-200">
-                  <div className="flex gap-2 overflow-x-auto pb-2">
+                  <div className="flex gap-2 overflow-x-auto pb-1">
                     {item.portfolio_media
                       ?.sort((a, b) => a.display_order - b.display_order)
                       .map((media, index) => (
@@ -408,7 +373,7 @@ export default function PortfolioDetailPage() {
                         onClick={() => setCurrentMediaIndex(index)}
                         className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
                           currentMediaIndex === index 
-                            ? 'border-green-600 scale-105' 
+                            ? 'border-gray-900' 
                             : 'border-transparent hover:border-gray-400'
                         }`}
                       >
@@ -429,23 +394,6 @@ export default function PortfolioDetailPage() {
                 </div>
               )}
             </div>
-
-            {/* Mobile actions */}
-            <div className="flex items-center justify-between mt-4 p-4 bg-white rounded-xl border border-gray-200 shadow-sm sm:hidden">
-              <LikeSaveButtons 
-                itemId={item.id}
-                initialLikeCount={item.like_count || 0}
-                initialSaveCount={item.save_count || 0}
-                size="md"
-                showCounts={true}
-              />
-              <button 
-                onClick={() => setShowShareMenu(!showShareMenu)}
-                className="p-2 hover:bg-gray-100 rounded-lg text-gray-700 hover:text-gray-900"
-              >
-                <Share2 size={20} />
-              </button>
-            </div>
           </div>
 
           {/* Right Column: Info */}
@@ -455,7 +403,7 @@ export default function PortfolioDetailPage() {
               <div className="flex items-center gap-3 mb-4">
                 <Link 
                   href={`/creator/${creator?.id}`}
-                  className="h-14 w-14 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden hover:opacity-80 transition-opacity"
+                  className="h-14 w-14 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden hover:opacity-80 transition-opacity flex-shrink-0"
                 >
                   {creator?.profile_image_url ? (
                     <img
@@ -487,11 +435,22 @@ export default function PortfolioDetailPage() {
                         <span className="capitalize">{creator.creator_type}</span>
                       </div>
                     )}
+                    
+                    {creator?.avg_rating && creator.avg_rating > 0 && (
+                      <div className="flex items-center gap-1 text-yellow-600">
+                        <Star size={12} className="fill-yellow-500" />
+                        <span className="font-medium">{creator.avg_rating.toFixed(1)}</span>
+                        {creator.total_reviews && creator.total_reviews > 0 && (
+                          <span className="text-gray-600 text-xs">
+                            ({creator.total_reviews})
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Creator stats */}
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-bold text-gray-900">{item.view_count.toLocaleString()}</div>
@@ -503,29 +462,20 @@ export default function PortfolioDetailPage() {
                 </div>
               </div>
 
-              {/* Contact creator button */}
               <Link
                 href={`/creator/${creator?.id}`}
-                className="block w-full mt-4 px-4 py-3 bg-green-900 text-white hover:bg-green-800 text-center rounded-lg font-medium transition-colors"
+                className="block w-full mt-4 px-4 py-3 bg-gray-900 text-white hover:bg-gray-800 text-center rounded-lg font-medium transition-colors"
               >
-                View Creator Profile
+                View Full Profile
               </Link>
             </div>
 
             {/* Post details */}
             <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
               <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h1 className="text-2xl font-bold text-gray-900">{item.title || 'Untitled Post'}</h1>
-                  {item.is_featured && (
-                    <div className="flex items-center gap-1 text-yellow-600">
-                      <Star size={16} className="fill-yellow-500" />
-                      <span className="text-sm">Featured</span>
-                    </div>
-                  )}
-                </div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">{item.title || 'Untitled Project'}</h1>
                 
-                <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+                <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                   <div className="flex items-center gap-1">
                     <Calendar size={14} />
                     <span>{formattedDate}</span>
@@ -536,30 +486,99 @@ export default function PortfolioDetailPage() {
                   </div>
                 </div>
 
-                <div className="inline-block px-3 py-1 bg-green-50 text-green-800 rounded-full text-sm font-medium border border-green-100">
-                  {item.category}
+                <div className="flex items-center gap-2">
+                  <div className="inline-block px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium border border-gray-200">
+                    {item.category}
+                  </div>
+                  {item.is_featured && (
+                    <div className="flex items-center gap-1 px-3 py-1 bg-yellow-50 text-yellow-800 rounded-full text-sm font-medium border border-yellow-200">
+                      <Star size={14} className="fill-yellow-500 text-yellow-600" />
+                      <span>Featured</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
+              {/* Description - INSIDE CONTAINER with proper containment */}
               {item.description && (
-                <div className="mt-6">
-                  <h3 className="font-medium mb-2 text-gray-900">Description</h3>
-                  <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                    {item.description}
-                  </p>
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <h3 className="font-medium mb-3 text-gray-900">Description</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                    <div className="text-gray-700 leading-relaxed">
+                      <p className={`whitespace-pre-line ${!showFullDescription && descriptionExceedsLimit ? 'line-clamp-3' : ''}`}>
+                        {item.description}
+                      </p>
+                      {descriptionExceedsLimit && (
+                        <button
+                          onClick={() => setShowFullDescription(!showFullDescription)}
+                          className="mt-3 text-gray-900 hover:text-gray-700 font-medium flex items-center gap-1 text-sm"
+                        >
+                          {showFullDescription ? (
+                            <>
+                              <ChevronUp size={16} />
+                              Show less
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown size={16} />
+                              Read more
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Comments section (placeholder) */}
+            {/* Like, Save, Share Actions */}
             <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <h3 className="font-medium mb-4 text-gray-900">Comments</h3>
-              <div className="text-center py-8">
-                <MessageCircle size={32} className="text-gray-400 mx-auto mb-3" />
-                <div className="text-gray-600">Comments coming soon</div>
-                <p className="text-sm text-gray-500 mt-1">
-                  We're working on adding comments functionality
-                </p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <LikeSaveButtons 
+                    itemId={item.id}
+                    initialLikeCount={item.like_count || 0}
+                    initialSaveCount={item.save_count || 0}
+                    size="lg"
+                    showCounts={true}
+                  />
+                </div>
+                
+                <div className="relative">
+                  <button
+                    onClick={() => setShowShareMenu(!showShareMenu)}
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <Share2 size={18} className="text-gray-700" />
+                    <span className="text-sm font-medium text-gray-700">Share</span>
+                  </button>
+                  
+                  {showShareMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
+                      <div className="py-2">
+                        <button
+                          onClick={copyLink}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                        >
+                          Copy Link
+                        </button>
+                        <button
+                          onClick={shareToWhatsApp}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                        >
+                          Share on WhatsApp
+                        </button>
+                        <button
+                          onClick={shareToTwitter}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                        >
+                          Share on Twitter
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -571,7 +590,7 @@ export default function PortfolioDetailPage() {
         <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
           <button
             onClick={() => setShowFullscreen(false)}
-            className="absolute top-4 right-4 p-2 bg-gray-800/50 text-white rounded-full hover:bg-gray-800/70 z-10"
+            className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 z-10"
           >
             <X size={24} />
           </button>
@@ -591,13 +610,12 @@ export default function PortfolioDetailPage() {
             />
           )}
           
-          {/* Fullscreen navigation */}
           {item.media_count > 1 && (
             <>
               {currentMediaIndex > 0 && (
                 <button
                   onClick={prevMedia}
-                  className="absolute left-4 top-1/2 transform -translate-y-1/2 p-4 bg-gray-800/50 text-white rounded-full hover:bg-gray-800/70 z-10"
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 p-4 bg-black/50 text-white rounded-full hover:bg-black/70 z-10"
                 >
                   <ChevronLeft size={32} />
                 </button>
@@ -605,13 +623,13 @@ export default function PortfolioDetailPage() {
               {currentMediaIndex < item.media_count - 1 && (
                 <button
                   onClick={nextMedia}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 p-4 bg-gray-800/50 text-white rounded-full hover:bg-gray-800/70 z-10"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 p-4 bg-black/50 text-white rounded-full hover:bg-black/70 z-10"
                 >
                   <ChevronRight size={32} />
                 </button>
               )}
               
-              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-800/70 text-white px-4 py-2 rounded-full text-lg">
+              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-lg">
                 {currentMediaIndex + 1} / {item.media_count}
               </div>
             </>

@@ -1,14 +1,16 @@
+// components/feed/HomeFeed.tsx - IMPROVED COMMENTS DISPLAY
 'use client'
 
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import VideoPreview from '@/components/common/VideoPreview'
 import Link from 'next/link'
-import { Star, Heart, MessageCircle, Share2, User, Grid, Copy, Twitter, MessageCircle as WhatsAppIcon, Facebook, Check, RefreshCw, ArrowDown, Eye } from 'lucide-react'
+import { Star, Heart, MessageCircle, Share2, User, Grid, Check, RefreshCw, Eye, Send, X, ChevronDown, ChevronUp, Loader } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import LikeSaveButtons from '@/components/interactions/LikeSaveButtons'
 import { trackView } from '@/lib/utils/viewTracker'
 import { feedCache } from '@/lib/FeedCache'
+import { formatDistanceToNow } from 'date-fns'
 
 interface FeedItem {
   id: string
@@ -28,12 +30,25 @@ interface FeedItem {
     location?: string
     profile_image_url?: string
     creator_type?: string
+    avg_rating?: number
+    total_reviews?: number
   }
   portfolio_media: {
     media_url: string
     media_type: 'image' | 'video'
     display_order: number
   }[]
+}
+
+interface Comment {
+  id: string
+  content: string
+  created_at: string
+  user_display_name: string
+  user_profile_image_url: string | null
+  user_creator_type: string
+  likes_count: number
+  reply_count: number
 }
 
 interface Filters {
@@ -46,7 +61,7 @@ interface HomeFeedProps {
   filters: Filters
 }
 
-// ALGORITHMIC SHUFFLE FUNCTION
+// ALGORITHMIC SHUFFLE FUNCTION (keep existing)
 function shuffleWithWeights(items: FeedItem[], seed: number): FeedItem[] {
   if (!items.length) return []
   
@@ -85,7 +100,7 @@ function shuffleWithWeights(items: FeedItem[], seed: number): FeedItem[] {
   return weightedItems.map(w => w.item)
 }
 
-// CONTENT VARIETY FUNCTION
+// CONTENT VARIETY FUNCTION (keep existing)
 function ensureContentVariety(items: FeedItem[]): FeedItem[] {
   if (items.length <= 10) return items
   
@@ -143,18 +158,16 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
   const [viewCountUpdates, setViewCountUpdates] = useState<Record<string, number>>({})
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
-  const [pullToRefresh, setPullToRefresh] = useState({
-    isPulling: false,
-    startY: 0,
-    distance: 0,
-    threshold: 60,
-    isActive: false
-  })
+  const [showComments, setShowComments] = useState<Record<string, boolean>>({})
+  const [comments, setComments] = useState<Record<string, Comment[]>>({})
+  const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({})
+  const [newComment, setNewComment] = useState<Record<string, string>>({})
+  const [postingComment, setPostingComment] = useState<Record<string, boolean>>({})
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
   
-  const shareMenuRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const feedRef = useRef<HTMLDivElement>(null)
   const hasLoadedRef = useRef(false)
-  const touchStartRef = useRef<{ startY: number, startTime: number, isTop: boolean } | null>(null)
+  const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({})
 
   // CHECK CACHE ON MOUNT
   useEffect(() => {
@@ -167,6 +180,11 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
       setItems(cachedData.data)
       setSessionSeed(cachedData.seed)
       hasLoadedRef.current = true
+      
+      // Preload comment counts for cached items
+      cachedData.data.forEach(item => {
+        loadCommentCount(item.id)
+      })
     } else {
       const seed = Math.floor(Math.random() * 10000)
       setSessionSeed(seed)
@@ -175,79 +193,7 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
     }
   }, [])
 
-  // PULL-TO-REFRESH - IMPROVED VERSION
-  useEffect(() => {
-    const handleTouchStart = (e: TouchEvent) => {
-      // Only activate pull-to-refresh if at the very top of the page
-      if (window.scrollY <= 10) {
-        touchStartRef.current = {
-          startY: e.touches[0].clientY,
-          startTime: Date.now(),
-          isTop: true
-        }
-      } else {
-        touchStartRef.current = {
-          startY: e.touches[0].clientY,
-          startTime: Date.now(),
-          isTop: false
-        }
-      }
-    }
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (!touchStartRef.current || !touchStartRef.current.isTop) return
-      
-      const currentY = e.touches[0].clientY
-      const distance = Math.max(0, currentY - touchStartRef.current.startY)
-      
-      // Only activate pull-to-refresh if user is pulling down from top
-      if (distance > 5 && touchStartRef.current.isTop) {
-        setPullToRefresh(prev => ({
-          ...prev,
-          isPulling: true,
-          distance,
-          isActive: true
-        }))
-        
-        // Prevent default only when pull-to-refresh is active
-        if (distance > 10) {
-          e.preventDefault()
-        }
-      }
-    }
-
-    const handleTouchEnd = () => {
-      if (pullToRefresh.isActive && pullToRefresh.distance > pullToRefresh.threshold) {
-        refreshFeed()
-      }
-      
-      // Reset with delay for smooth animation
-      setTimeout(() => {
-        setPullToRefresh({
-          isPulling: false,
-          startY: 0,
-          distance: 0,
-          threshold: 60,
-          isActive: false
-        })
-      }, 200)
-      
-      touchStartRef.current = null
-    }
-
-    // Add event listeners with proper options
-    document.addEventListener('touchstart', handleTouchStart, { passive: true })
-    document.addEventListener('touchmove', handleTouchMove, { passive: false })
-    document.addEventListener('touchend', handleTouchEnd, { passive: true })
-
-    return () => {
-      document.removeEventListener('touchstart', handleTouchStart)
-      document.removeEventListener('touchmove', handleTouchMove)
-      document.removeEventListener('touchend', handleTouchEnd)
-    }
-  }, [pullToRefresh.isActive, pullToRefresh.distance])
-
-  // LOAD FEED ITEMS
+  // LOAD FEED ITEMS WITH RATINGS
   async function loadFeedItems(seed: number) {
     setLoading(true)
     try {
@@ -260,7 +206,9 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
             display_name,
             location,
             profile_image_url,
-            creator_type  
+            creator_type,
+            avg_rating,
+            total_reviews
           ),
           portfolio_media (
             media_url,
@@ -278,13 +226,36 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
       
       setItems(variedItems)
       
+      // Load comment counts for all items
+      variedItems.forEach(item => {
+        loadCommentCount(item.id)
+      })
+      
       const cacheKey = `homeFeed_${JSON.stringify(filters)}`
       feedCache.set(cacheKey, variedItems, seed)
       
     } catch (error) {
-      console.error('Error loading feed:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // LOAD COMMENT COUNT FOR AN ITEM
+  async function loadCommentCount(itemId: string) {
+    try {
+      const { count, error } = await supabase
+        .from('portfolio_comments')
+        .select('*', { count: 'exact', head: true })
+        .eq('portfolio_item_id', itemId)
+        .eq('moderation_status', 'approved')
+
+      if (error) throw error
+
+      setCommentCounts(prev => ({
+        ...prev,
+        [itemId]: count || 0
+      }))
+    } catch (error) {
     }
   }
 
@@ -300,11 +271,169 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
     await loadFeedItems(newSeed)
     setIsRefreshing(false)
     
-    // Scroll to top after refresh
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // FILTERED ITEMS - Use useMemo
+  // LOAD COMMENTS FOR A SPECIFIC ITEM
+  async function loadComments(itemId: string) {
+    setLoadingComments(prev => ({ ...prev, [itemId]: true }))
+    
+    try {
+      const { data, error } = await supabase
+        .from('portfolio_comments')
+        .select(`
+          id,
+          content,
+          created_at,
+          user_display_name,
+          user_profile_image_url,
+          user_creator_type,
+          likes_count,
+          reply_count
+        `)
+        .eq('portfolio_item_id', itemId)
+        .eq('moderation_status', 'approved')
+        .is('parent_comment_id', null) // Only top-level comments in feed
+        .order('created_at', { ascending: false })
+        .limit(3) // Show only 3 comments in feed
+
+      if (error) throw error
+
+      setComments(prev => ({
+        ...prev,
+        [itemId]: data || []
+      }))
+    } catch (error) {
+    } finally {
+      setLoadingComments(prev => ({ ...prev, [itemId]: false }))
+    }
+  }
+
+  // TOGGLE COMMENT SECTION
+  const toggleComments = (itemId: string) => {
+    const newState = !showComments[itemId]
+    setShowComments(prev => ({ ...prev, [itemId]: newState }))
+    
+    if (newState) {
+      // Auto-focus textarea when opening comments
+      setTimeout(() => {
+        textareaRefs.current[itemId]?.focus()
+      }, 100)
+      
+      if (!comments[itemId]) {
+        loadComments(itemId)
+      }
+    }
+  }
+
+  // POST A COMMENT
+  async function postComment(itemId: string) {
+    const commentText = newComment[itemId]?.trim()
+    if (!commentText) return
+
+    setPostingComment(prev => ({ ...prev, [itemId]: true }))
+
+    try {
+      const { data: user } = await supabase.auth.getUser()
+      
+      if (!user.user) {
+        alert('Please sign in to comment')
+        return
+      }
+
+      // Get user profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name, profile_image_url, creator_type')
+        .eq('id', user.user.id)
+        .single()
+
+      // Submit comment
+      const { data: newCommentData, error } = await supabase
+        .from('portfolio_comments')
+        .insert({
+          portfolio_item_id: itemId,
+          user_id: user.user.id,
+          content: commentText,
+          user_display_name: profile?.display_name || 'User',
+          user_profile_image_url: profile?.profile_image_url,
+          user_creator_type: profile?.creator_type,
+          moderation_status: 'approved'
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Add to local state
+      const commentWithData: Comment = {
+        id: newCommentData.id,
+        content: newCommentData.content,
+        created_at: newCommentData.created_at,
+        user_display_name: profile?.display_name || 'User',
+        user_profile_image_url: profile?.profile_image_url,
+        user_creator_type: profile?.creator_type || '',
+        likes_count: 0,
+        reply_count: 0
+      }
+
+      setComments(prev => ({
+        ...prev,
+        [itemId]: [commentWithData, ...(prev[itemId] || [])]
+      }))
+
+      // Update comment count
+      setCommentCounts(prev => ({
+        ...prev,
+        [itemId]: (prev[itemId] || 0) + 1
+      }))
+
+      // Clear input
+      setNewComment(prev => ({ ...prev, [itemId]: '' }))
+
+      // Auto-resize textarea
+      const textarea = textareaRefs.current[itemId]
+      if (textarea) {
+        textarea.style.height = 'auto'
+      }
+
+      // Show success toast
+      setToastMessage('Comment posted!')
+      setToastType('success')
+      setTimeout(() => setToastMessage(null), 3000)
+
+    } catch (error) {
+      setToastMessage('Failed to post comment')
+      setToastType('error')
+      setTimeout(() => setToastMessage(null), 3000)
+    } finally {
+      setPostingComment(prev => ({ ...prev, [itemId]: false }))
+    }
+  }
+
+  // Handle textarea auto-resize
+  const handleTextareaChange = (itemId: string, value: string) => {
+    setNewComment(prev => ({ ...prev, [itemId]: value }))
+    
+    // Auto-resize
+    const textarea = textareaRefs.current[itemId]
+    if (textarea) {
+      textarea.style.height = 'auto'
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 80)}px`
+    }
+  }
+
+  // Handle Enter key to submit comment
+  const handleTextareaKeyDown = (e: React.KeyboardEvent, itemId: string) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      if (newComment[itemId]?.trim()) {
+        postComment(itemId)
+      }
+    }
+  }
+
+  // FILTERED ITEMS
   const filteredItems = useMemo(() => {
     let result = [...items]
 
@@ -365,31 +494,6 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
 
   return (
     <div className="w-full px-2 py-3" ref={feedRef}>
-      {/* PULL-TO-REFRESH INDICATOR - Simplified */}
-      {(pullToRefresh.isPulling && pullToRefresh.distance > 0) && (
-        <div 
-          className="sticky top-0 z-40 flex justify-center -mt-3 mb-0 transition-all duration-200"
-          style={{
-            transform: `translateY(${Math.min(pullToRefresh.distance - 40, 20)}px)`,
-            opacity: Math.min(pullToRefresh.distance / pullToRefresh.threshold, 1)
-          }}
-        >
-          <div className={`bg-green-900 text-white border border-green-700 rounded-full px-4 py-2 flex items-center gap-2 shadow-lg transition-all duration-200 ${
-            pullToRefresh.distance > pullToRefresh.threshold ? 'scale-105' : ''
-          }`}>
-            <ArrowDown 
-              size={16} 
-              className={`transition-transform duration-200 ${
-                pullToRefresh.distance > pullToRefresh.threshold ? 'rotate-180' : ''
-              }`}
-            />
-            <span className="text-sm">
-              {pullToRefresh.distance > pullToRefresh.threshold ? 'Release to refresh' : 'Pull down to refresh'}
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* TOAST NOTIFICATION */}
       {toastMessage && (
         <div className={`fixed top-4 right-4 px-4 py-2 rounded-lg z-50 flex items-center gap-2 ${
@@ -440,6 +544,9 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
                              item.portfolio_media?.[0]
             const hasMultipleMedia = item.media_count > 1
             const displayViewCount = (viewCountUpdates[item.id] || 0) + item.view_count
+            const itemComments = comments[item.id] || []
+            const showCommentSection = showComments[item.id]
+            const totalComments = commentCounts[item.id] || 0
             
             return (
               <div
@@ -454,8 +561,10 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
                     const clickedLink = target.closest('a')
                     const clickedInteractive = target.closest('[data-no-navigate]')
                     const clickedShareMenu = target.closest('[data-share-menu]')
+                    const clickedTextarea = target.closest('textarea')
+                    const clickedComment = target.closest('[data-comment-section]')
                     
-                    if (clickedButton || clickedLink || clickedInteractive || clickedShareMenu) {
+                    if (clickedButton || clickedLink || clickedInteractive || clickedShareMenu || clickedTextarea || clickedComment) {
                       return
                     }
                     
@@ -507,7 +616,7 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
 
                   {/* CONTENT SECTION */}
                   <div className="p-3">
-                    {/* CREATOR INFO */}
+                    {/* CREATOR INFO WITH RATING */}
                     <div 
                       className="flex items-center gap-2 mb-2"
                       onClick={(e) => e.stopPropagation()}
@@ -527,12 +636,29 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
                         )}
                       </Link>
                       <div className="flex-1 min-w-0">
-                        <Link 
-                          href={`/creator/${item.profiles?.id}`}
-                          className="font-medium text-xs truncate hover:underline block text-gray-900"
-                        >
-                          {item.profiles?.display_name || 'Unknown Creator'}
-                        </Link>
+                        <div className="flex items-center gap-1">
+                          <Link 
+                            href={`/creator/${item.profiles?.id}`}
+                            className="font-medium text-xs truncate hover:underline block text-gray-900"
+                          >
+                            {item.profiles?.display_name || 'Unknown Creator'}
+                          </Link>
+                          
+                          {/* RATING BADGE */}
+                          {item.profiles?.avg_rating && item.profiles.avg_rating > 0 && (
+                            <div className="flex items-center gap-0.5">
+                              <Star size={10} className="fill-yellow-500 text-yellow-500" />
+                              <span className="text-xs font-medium text-gray-900">
+                                {item.profiles.avg_rating.toFixed(1)}
+                              </span>
+                              {item.profiles.total_reviews && item.profiles.total_reviews > 0 && (
+                                <span className="text-xs text-gray-600">
+                                  ({item.profiles.total_reviews})
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                         {item.profiles?.location && (
                           <div className="text-[10px] text-gray-600 truncate">
                             {item.profiles.location}
@@ -569,6 +695,152 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
                       </div>
                     </div>
 
+                    {/* IMPROVED COMMENT DROPDOWN SECTION */}
+                    <div data-comment-section="true" onClick={(e) => e.stopPropagation()}>
+                      {/* Comment dropdown toggle button */}
+                      <button
+                        className={`w-full text-left mb-2 py-1.5 px-2 rounded-lg transition-colors ${
+                          showCommentSection 
+                            ? 'bg-gray-50 border border-gray-200' 
+                            : 'hover:bg-gray-50'
+                        }`}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          toggleComments(item.id)
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <MessageCircle size={14} className={showCommentSection ? 'text-green-600' : 'text-gray-500'} />
+                            <span className="text-xs font-medium text-gray-700">
+                              {totalComments} comment{totalComments !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <ChevronDown 
+                            size={14} 
+                            className={`transition-transform ${
+                              showCommentSection ? 'rotate-180 text-green-600' : 'text-gray-400'
+                            }`}
+                          />
+                        </div>
+                      </button>
+
+                      {/* Comment Section Content */}
+                      {showCommentSection && (
+                        <div className="animate-in fade-in-50 slide-in-from-top-2 duration-200">
+                          {/* Comments List */}
+                          <div className="mb-3 max-h-48 overflow-y-auto pr-1">
+                            {loadingComments[item.id] ? (
+                              <div className="flex items-center justify-center py-6">
+                                <Loader size={16} className="animate-spin text-gray-400" />
+                              </div>
+                            ) : itemComments.length > 0 ? (
+                              <div className="space-y-3">
+                                {itemComments.map((comment) => (
+                                  <div key={comment.id} className="flex items-start gap-2">
+                                    <div className="h-6 w-6 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden">
+                                      {comment.user_profile_image_url ? (
+                                        <img
+                                          src={comment.user_profile_image_url}
+                                          alt={comment.user_display_name}
+                                          className="h-full w-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="h-full w-full flex items-center justify-center">
+                                          <User size={12} className="text-gray-600" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1 mb-0.5">
+                                        <span className="text-xs font-semibold text-gray-900">
+                                          {comment.user_display_name}
+                                        </span>
+                                        <span className="text-[10px] text-gray-500">
+                                          {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-gray-700 mb-1">
+                                        {comment.content}
+                                      </p>
+                                      <div className="flex items-center gap-3">
+                                        <button className="text-[10px] text-gray-500 hover:text-gray-700 flex items-center gap-1">
+                                          <Heart size={10} />
+                                          <span>{comment.likes_count || 0}</span>
+                                        </button>
+                                        <button className="text-[10px] text-gray-500 hover:text-green-700">
+                                          Reply
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                                
+                                {/* View all comments link */}
+                                {totalComments > 3 && (
+                                  <div className="pt-2 border-t border-gray-100">
+                                    <Link
+                                      href={`/portfolio/${item.id}#comments`}
+                                      className="text-xs text-green-700 hover:text-green-800 font-medium"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      View all {totalComments} comments →
+                                    </Link>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-center py-6">
+                                <div className="text-xs text-gray-500 mb-2">No comments yet</div>
+                                <div className="text-[10px] text-gray-400">Be the first to comment!</div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Improved Comment Input */}
+                          <div className="relative">
+                            <textarea
+                              ref={el => {
+                                if (el) {
+                                  textareaRefs.current[item.id] = el;}
+                                }}    
+                              value={newComment[item.id] || ''}
+                              onChange={(e) => handleTextareaChange(item.id, e.target.value)}
+                              onKeyDown={(e) => handleTextareaKeyDown(e, item.id)}
+                              placeholder="Add a comment..."
+                              className="w-full p-3 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-green-600 resize-none pr-10"
+                              rows={1}
+                              maxLength={200}
+                              style={{ minHeight: '40px', maxHeight: '80px' }}
+                            />
+                            <div className="absolute right-2 bottom-2 flex items-center gap-1">
+                              <span className="text-[10px] text-gray-400">
+                                {200 - (newComment[item.id]?.length || 0)}
+                              </span>
+                              <button
+                                onClick={() => postComment(item.id)}
+                                disabled={!newComment[item.id]?.trim() || postingComment[item.id]}
+                                className="p-1.5 bg-green-900 text-white rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                title="Post comment"
+                              >
+                                {postingComment[item.id] ? (
+                                  <Loader size={12} className="animate-spin" />
+                                ) : (
+                                  <Send size={12} />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                          
+                          {/* Quick tip */}
+                          <div className="text-[10px] text-gray-500 mt-2 text-center">
+                            Press Enter to post • Shift+Enter for new line
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     {/* ACTION BUTTONS */}
                     <div 
                       className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100"
@@ -585,14 +857,6 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
                             showCounts={false}
                           />
                         </div>
-                        <button 
-                          className="text-gray-500 hover:text-gray-900 p-1.5 rounded-full hover:bg-gray-100"
-                          onClick={(e) => {
-                            e.preventDefault()
-                          }}
-                        >
-                          <MessageCircle size={14} />
-                        </button>
                       </div>
                       
                       <button 
@@ -600,6 +864,20 @@ export default function HomeFeed({ filters }: HomeFeedProps) {
                         onClick={(e) => {
                           e.stopPropagation()
                           e.preventDefault()
+                          // Share functionality
+                          if (navigator.share) {
+                            navigator.share({
+                              title: item.title || 'Portfolio Post',
+                              text: `Check out this work by ${item.profiles?.display_name || 'a creator'}`,
+                              url: `${window.location.origin}/portfolio/${item.id}`
+                            })
+                          } else {
+                            // Fallback copy link
+                            navigator.clipboard.writeText(`${window.location.origin}/portfolio/${item.id}`)
+                            setToastMessage('Link copied!')
+                            setToastType('success')
+                            setTimeout(() => setToastMessage(null), 3000)
+                          }
                         }}
                       >
                         <Share2 size={14} />

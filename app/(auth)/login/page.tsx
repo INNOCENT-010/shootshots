@@ -1,47 +1,67 @@
-// app/(auth)/login/page.tsx - FIXED WITH SUSPENSE
+// app/(auth)/login/page.tsx
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { migrateGuestLikesToUser } from '@/lib/utils/LikeSave'
-import { Loader2 } from 'lucide-react'
+import { Camera, Loader2, ArrowRight, Cpu, Terminal, Shield, Lock } from 'lucide-react'
 
-function LoginContent() {
+export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [isCreatorLogin, setIsCreatorLogin] = useState(false)
+  const [success, setSuccess] = useState('')
+  const [fadeOut, setFadeOut] = useState(false)
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const redirect = searchParams.get('redirect') || '/'
+
+  useEffect(() => {
+    // Check if user just signed up
+    const signupSuccess = localStorage.getItem('signup_success')
+    if (signupSuccess) {
+      setSuccess('Account created successfully! Please login.')
+      localStorage.removeItem('signup_success')
+      setTimeout(() => setSuccess(''), 5000)
+    }
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setSuccess('')
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: email.trim(),
+        password: password.trim(),
       })
 
       if (error) throw error
       
-      // MIGRATE GUEST LIKES TO USER ACCOUNT
       if (data.user) {
         await migrateGuestLikesToUser(data.user.id)
       }
       
-      // Redirect based on login type
-      if (isCreatorLogin) {
-        router.push('/dashboard')
-      } else {
-        router.push(redirect)
-      }
-      router.refresh()
+      setSuccess('Login successful!')
+      setFadeOut(true)
+      
+      setTimeout(async () => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('user_type')
+          .eq('id', data.user.id)
+          .single()
+        
+        if (profile?.user_type === 'creator') {
+          router.push('/dashboard')
+        } else {
+          router.push('/')
+        }
+        router.refresh()
+      }, 1500)
+      
     } catch (error: any) {
       setError(error.message || 'Login failed')
     } finally {
@@ -49,145 +69,160 @@ function LoginContent() {
     }
   }
 
+  if (fadeOut) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="text-center animate-fade-in">
+          <div className="w-16 h-16 bg-gradient-to-br from-green-600 to-green-800 rounded-xl flex items-center justify-center mx-auto mb-6">
+            <Cpu className="h-8 w-8 text-white" />
+          </div>
+          <h2 className="text-xl font-semibold text-white mb-2">Welcome Back</h2>
+          <p className="text-gray-400 text-sm">Accessing your digital portfolio...</p>
+          <div className="mt-6">
+            <div className="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-green-500 border-r-transparent"></div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <h1 className="text-3xl font-bold mb-8 text-center text-green-900">Shootshots</h1>
-        
-        {/* Login Type Toggle */}
-        <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
-          <button
-            type="button"
-            onClick={() => setIsCreatorLogin(false)}
-            className={`flex-1 py-2 rounded text-sm font-medium transition-colors ${
-              !isCreatorLogin 
-                ? 'bg-green-900 text-white' 
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Client Login
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsCreatorLogin(true)}
-            className={`flex-1 py-2 rounded text-sm font-medium transition-colors ${
-              isCreatorLogin 
-                ? 'bg-green-900 text-white' 
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Creator Login
-          </button>
+        {/* Brand Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="h-12 w-12 bg-gradient-to-br from-green-600 to-green-800 rounded-xl flex items-center justify-center">
+              <Cpu className="h-7 w-7 text-white" />
+            </div>
+            <div className="text-left">
+              <h1 className="text-2xl font-bold text-white">ShootShots</h1>
+              <p className="text-gray-400 text-xs">Digital Portfolio Platform</p>
+            </div>
+          </div>
+          <p className="text-gray-400 text-sm">Access your digital portfolio</p>
         </div>
 
-        {/* Login Indicator */}
-        <div className={`mb-6 p-3 rounded-lg border text-center text-sm ${
-          isCreatorLogin 
-            ? 'bg-green-50 border-green-200 text-green-800' 
-            : 'bg-gray-50 border-gray-200 text-gray-700'
-        }`}>
-          {isCreatorLogin 
-            ? 'Logging in as a creator to access your portfolio dashboard' 
-            : 'Logging in as a client to browse, like, and save items'
-          }
-        </div>
-        
-        <form onSubmit={handleLogin} className="space-y-6 bg-white p-8 rounded-lg border border-gray-200 shadow-sm">
-          <div>
-            <label className="block text-sm font-medium mb-2 text-gray-900">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 bg-gray-50 rounded border border-gray-300 focus:border-green-600 focus:outline-none text-gray-900"
-              required
-              autoComplete="email"
-            />
+        {/* Login Card */}
+        <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+          <div className="p-8">
+            {/* Success Message */}
+            {success && (
+              <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
+                <div className="text-green-400 text-sm">{success}</div>
+              </div>
+            )}
+            
+            {/* Login Form */}
+            <form onSubmit={handleLogin} className="space-y-6">
+              {/* Email Input */}
+              <div>
+                <label className="block text-xs font-medium mb-3 text-gray-400 uppercase tracking-wide">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full p-4 bg-gray-800/50 rounded-xl border border-gray-700 focus:border-green-500 focus:outline-none text-white text-sm placeholder-gray-500"
+                    placeholder="you@example.com"
+                    required
+                    autoComplete="email"
+                  />
+                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                    <Shield className="h-4 w-4 text-gray-500" />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Password Input */}
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <label className="block text-xs font-medium text-gray-400 uppercase tracking-wide">
+                    Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/forgot-password')}
+                    className="text-xs text-gray-500 hover:text-green-400 hover:underline transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full p-4 bg-gray-800/50 rounded-xl border border-gray-700 focus:border-green-500 focus:outline-none text-white text-sm placeholder-gray-500"
+                    placeholder="••••••••"
+                    required
+                    autoComplete="current-password"
+                  />
+                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                    <Lock className="h-4 w-4 text-gray-500" />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Error Message */}
+              {error && (
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+                  <div className="text-red-400 text-sm">{error}</div>
+                </div>
+              )}
+              
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full p-4 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm font-medium rounded-xl hover:from-green-700 hover:to-green-800 transition-all shadow-lg hover:shadow-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="animate-spin h-5 w-5" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    <Terminal className="h-5 w-5" />
+                    Access Portfolio
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+            </form>
           </div>
           
-          <div>
-            <label className="block text-sm font-medium mb-2 text-gray-900">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 bg-gray-50 rounded border border-gray-300 focus:border-green-600 focus:outline-none text-gray-900"
-              required
-              autoComplete="current-password"
-            />
+          {/* Divider */}
+          <div className="px-8">
+            <div className="border-t border-gray-800"></div>
           </div>
           
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
-              {error}
-            </div>
-          )}
-          
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full p-3 font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              isCreatorLogin
-                ? 'bg-green-900 text-white hover:bg-green-800'
-                : 'bg-green-900 text-white hover:bg-green-800'
-            }`}
-          >
-            {loading 
-              ? (isCreatorLogin ? 'Logging in as Creator...' : 'Logging in...')
-              : (isCreatorLogin ? 'Login as Creator' : 'Login')
-            }
-          </button>
-          
-          <div className="text-center space-y-3">
-            <p className="text-gray-600 text-sm">
-              Don't have an account?{' '}
+          {/* Footer */}
+          <div className="p-8 pt-6 bg-gray-900/30">
+            <div className="text-center space-y-4">
+              <p className="text-gray-400 text-sm">
+                Don't have a digital portfolio yet?
+              </p>
               <button
                 type="button"
-                onClick={() => router.push(isCreatorLogin ? '/signup' : '/signup')}
-                className="text-green-800 hover:underline font-medium"
+                onClick={() => router.push('/signup')}
+                className="w-full p-3 border-2 border-green-500/30 text-green-400 text-sm font-medium rounded-xl hover:bg-green-500/10 hover:border-green-500/50 transition-all"
               >
-                Sign up {isCreatorLogin ? 'as Creator' : ''}
+                Create Free Digital Portfolio
               </button>
-            </p>
-            
-            <p className="text-gray-600 text-sm">
-              {isCreatorLogin ? (
-                <button
-                  type="button"
-                  onClick={() => router.push('/login')}
-                  className="text-green-800 hover:underline font-medium"
-                >
-                  ← Back to Client Login
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => router.push('/login')}
-                  className="text-green-800 hover:underline font-medium"
-                >
-                  Creator Login →
-                </button>
-              )}
-            </p>
+              
+              <p className="text-xs text-gray-500 mt-4">
+                By signing in, you agree to our{' '}
+                <button className="text-green-400 hover:text-green-300 hover:underline transition-colors">Terms</button> and{' '}
+                <button className="text-green-400 hover:text-green-300 hover:underline transition-colors">Privacy Policy</button>
+              </p>
+            </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
-  )
-}
-
-function LoadingFallback() {
-  return (
-    <div className="min-h-screen bg-white flex items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-    </div>
-  )
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<LoadingFallback />}>
-      <LoginContent />
-    </Suspense>
   )
 }
