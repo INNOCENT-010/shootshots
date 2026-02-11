@@ -550,58 +550,12 @@ export default function EditPortfolioPage() {
             </div>
           </div>
 
-          {/* User limits info */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="flex items-center gap-2 mb-1">
-                <File className="h-4 w-4 text-purple-600" />
-                <span className="text-sm text-gray-600">Post Media</span>
-              </div>
-              <div className="text-lg font-bold text-gray-900">
-                {totalSelected} / {userLimits.max_media_per_post}
-              </div>
-              <div className="text-xs text-gray-500">
-                {userLimits.max_media_per_post - totalSelected} slots remaining
-              </div>
-            </div>
-            
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="flex items-center gap-2 mb-1">
-                <ImageIcon className="h-4 w-4 text-green-600" />
-                <span className="text-sm text-gray-600">Your Media Usage</span>
-              </div>
-              <div className="text-lg font-bold text-gray-900">
-                {userLimits.media_used} / {userLimits.max_media}
-              </div>
-              <div className="text-xs text-gray-500">
-                {userLimits.remaining_media - newMediaFiles.length} media remaining after edit
-              </div>
-            </div>
-            
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="flex items-center gap-2 mb-1">
-                <Upload className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-gray-600">New Files</span>
-              </div>
-              <div className="text-lg font-bold text-gray-900">
-                {newMediaFiles.length} file(s)
-              </div>
-              <div className="text-xs text-gray-500">
-                {formatFileSize(newMediaFiles.reduce((sum, f) => sum + f.size, 0))} total
-              </div>
-            </div>
-          </div>
+         
         </div>
 
         {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center gap-2 text-red-700">
-              <AlertCircle size={16} />
-              <span>{error}</span>
-            </div>
-          </div>
-        )}
+        
+        
 
         {/* Form */}
         <div className="space-y-8">
@@ -909,18 +863,13 @@ export default function EditPortfolioPage() {
                 <span className="text-gray-600">Total files after edit:</span>
                 <span className="font-medium">{totalSelected} file(s)</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Media usage change:</span>
-                <span className="font-medium">
-                  {userLimits.media_used} → {userLimits.media_used + newMediaFiles.length}
-                </span>
-              </div>
+              
               <div className="border-t border-gray-200 pt-3 mt-3">
                 <div className="flex justify-between font-medium text-gray-900">
                   <span>Post totals after edit:</span>
                   <span className="text-right">
-                    <div>{totalSelected}/{userLimits.max_media_per_post} files in post</div>
-                    <div>{userLimits.media_used + newMediaFiles.length}/{userLimits.max_media} total media used</div>
+                    <div>{totalSelected} files in post</div>
+                    
                   </span>
                 </div>
               </div>
