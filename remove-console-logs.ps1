@@ -1,48 +1,90 @@
-# remove-console-logs.ps1
+# remove-console-logs.ps1 - PRODUCTION READY (NO EMOJIS)
 param(
-    [string]$Path = "."
+    [string]$Path = ".",
+    [switch]$WhatIf
 )
 
-Write-Host "Removing console logs from $Path..." -ForegroundColor Yellow
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "     REMOVING CONSOLE LOGS FOR PROD    " -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
 
 $count = 0
+$filesChanged = 0
+
+# Patterns to match different console statements
+$patterns = @(
+    '^\s*console\.(log|error|warn|info|debug|trace)\([^;]*\);?\s*$',
+    '^\s*//\s*console\.(log|error|warn|info|debug|trace)\([^;]*\);?\s*$',
+    '^\s*console\.(log|error|warn|info|debug|trace)\([^)]*\)(\s*;)?\s*$',
+    '^\s*console\.(log|error|warn|info|debug|trace)\([^)]*\)\s*$',
+    '^\s*console\.(log|error|warn|info|debug|trace)\([\s\S]*?\);?\s*$'
+)
 
 # Get all TypeScript/JavaScript files
 $files = Get-ChildItem -Path $Path -Include *.ts, *.tsx, *.js, *.jsx -Recurse | 
     Where-Object { 
         $_.FullName -notmatch 'node_modules' -and 
         $_.FullName -notmatch '\.next' -and
-        $_.FullName -notmatch 'dist'
+        $_.FullName -notmatch 'dist' -and
+        $_.FullName -notmatch 'coverage'
     }
 
+Write-Host "`nScanning $($files.Count) files..." -ForegroundColor Yellow
+
 foreach ($file in $files) {
-    $originalContent = Get-Content $file.FullName -Raw
-    $lines = Get-Content $file.FullName
+    $content = Get-Content -Path $file.FullName -Raw
+    $originalContent = $content
+    $lineCount = @($content -split "`n").Count
     
-    $newLines = @()
-    $removedCount = 0
-    
-    foreach ($line in $lines) {
-        # Check if line contains console.log (with or without semicolon)
-        if ($line -match '^\s*console\.(log|error|warn|info|debug|trace)\(.*\)(\s*;)?\s*$') {
-            $removedCount++
-            continue
-        }
-        # Check if console.log is part of a line (not at beginning)
-        if ($line -match 'console\.(log|error|warn|info|debug|trace)\(.*\)') {
-            # Remove the console.log but keep the rest of the line
-            $line = $line -replace 'console\.(log|error|warn|info|debug|trace)\([^)]*\)(\s*;)?\s*', ''
-            $removedCount++
-        }
-        $newLines += $line
+    # Remove full console.log lines
+    foreach ($pattern in $patterns) {
+        $content = $content -replace $pattern, ''
     }
     
-    if ($removedCount -gt 0) {
-        Set-Content -Path $file.FullName -Value ($newLines -join "`n") -NoNewline
-        $count += $removedCount
-        Write-Host "  Removed $removedCount console logs from $($file.Name)" -ForegroundColor Green
+    # Remove inline console.log that may be on same line as code
+    $content = $content -replace 'console\.(log|error|warn|info|debug|trace)\([^)]*\);?\s*', ''
+    
+    # Remove commented console.log lines
+    $content = $content -replace '^\s*//.*console\.(log|error|warn|info|debug|trace).*$', ''
+    
+    # Clean up multiple blank lines
+    $content = $content -replace "`n{3,}", "`n`n"
+    
+    # Calculate removed lines
+    $newLineCount = @($content -split "`n").Count
+    $removedLines = $lineCount - $newLineCount
+    
+    if ($content -ne $originalContent) {
+        $filesChanged++
+        $count += $removedLines
+        
+        if ($WhatIf) {
+            Write-Host "  [DRY RUN] Would remove $removedLines console logs from $($file.Name)" -ForegroundColor Magenta
+        } else {
+            Set-Content -Path $file.FullName -Value $content -NoNewline -Encoding UTF8
+            Write-Host "  + Removed $removedLines console logs from $($file.Name)" -ForegroundColor Green
+        }
     }
 }
 
-Write-Host "`nTotal console logs removed: $count" -ForegroundColor Cyan
-Write-Host "Done!" -ForegroundColor Green
+Write-Host "`n========================================" -ForegroundColor Cyan
+if ($WhatIf) {
+    Write-Host "DRY RUN COMPLETE - Would remove $count console logs from $filesChanged files" -ForegroundColor Magenta
+} else {
+    Write-Host "SUCCESS! Removed $count console logs from $filesChanged files" -ForegroundColor Green
+}
+Write-Host "========================================" -ForegroundColor Cyan
+
+# Show remaining console logs (for verification)
+Write-Host "`nChecking for any remaining console logs..." -ForegroundColor Yellow
+$remaining = Select-String -Path ($files.FullName) -Pattern "console\.(log|error|warn|info|debug|trace)\(" -List | 
+    Select-Object Path, LineNumber, Line
+
+if ($remaining) {
+    Write-Host "WARNING: Found remaining console logs in:" -ForegroundColor Red
+    $remaining | ForEach-Object {
+        Write-Host "  $($_.Path):$($_.LineNumber) - $($_.Line.Trim())" -ForegroundColor Red
+    }
+} else {
+    Write-Host "No remaining console logs found!" -ForegroundColor Green
+}

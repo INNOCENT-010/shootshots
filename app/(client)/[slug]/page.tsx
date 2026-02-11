@@ -1,5 +1,6 @@
-// app/(client)/creator/[id]/page.tsx - MOBILE OPTIMIZED WITH MORE TAB
+// app/(client)/[slug]/page.tsx - COMPLETE FIXED VERSION
 'use client'
+
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -35,6 +36,7 @@ interface CreatorProfile {
   total_reviews: number
   is_available: boolean
   rate_per_hour: number
+  slug: string
   cv_url?: string
   cv_filename?: string
   cv_filetype?: string
@@ -86,7 +88,7 @@ interface CreatorSocialLink {
 export default function CreatorProfilePage() {
   const params = useParams()
   const router = useRouter()
-  const creatorId = params.id as string
+  const slug = params.slug as string
   
   const [creator, setCreator] = useState<CreatorProfile | null>(null)
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([])
@@ -104,24 +106,31 @@ export default function CreatorProfilePage() {
   const [showCV, setShowCV] = useState(false)
 
   useEffect(() => {
-    if (creatorId) {
-      loadCreatorProfile()
-    }
-  }, [creatorId])
-
-  async function loadCreatorProfile() {
-    try {
-      setLoading(true)
+  if (!slug) return
+  
+  let isMounted = true
+  const abortController = new AbortController()
+  
+  async function loadCreator() {
+  if (!slug) return
+  
+  try {
+  
+    
+    const { data: slugData, error: slugError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('slug', slug)
+      .maybeSingle()
+    
+    
+    
+    if (slugData) {
       
-      const { data: creatorData, error: creatorError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', creatorId)
-        .single()
-
-      if (creatorError) throw creatorError
-
-      const { data: portfolioData, error: portfolioError } = await supabase
+      setCreator(slugData)
+      
+      // Load other data...
+      const { data: portfolioData } = await supabase
         .from('portfolio_items')
         .select(`
           *,
@@ -131,25 +140,53 @@ export default function CreatorProfilePage() {
             display_order
           )
         `)
-        .eq('creator_id', creatorId)
+        .eq('creator_id', slugData.id)
         .order('created_at', { ascending: false })
         .limit(12)
-
-      if (portfolioError) throw portfolioError
-
-      setCreator(creatorData)
+      
+      
       setPortfolioItems(portfolioData || [])
-
-      await loadCreatorData(creatorId)
-      await loadSocialLinks(creatorId)
-      await checkUserReview()
-
-    } catch (error) {
-      console.error('Error loading creator profile:', error)
-    } finally {
+      
+      await loadCreatorData(slugData.id)
+      await loadSocialLinks(slugData.id)
+      await checkUserReview(slugData.id)
+      
       setLoading(false)
+      return
     }
+    
+    // Try by ID
+    
+    const { data: idData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', slug)
+      .maybeSingle()
+    
+    if (idData) {
+      
+      router.replace(`/${idData.slug}`)
+      return
+    }
+    
+    
+    setCreator(null)
+    setLoading(false)
+    
+  } catch (err) {
+    
+    setCreator(null)
+    setLoading(false)
   }
+ }
+  
+  loadCreator()
+  
+  return () => {
+    isMounted = false
+    abortController.abort()
+  }
+  }, [slug, router])
 
   async function loadCreatorData(creatorId: string) {
     try {
@@ -172,8 +209,8 @@ export default function CreatorProfilePage() {
         setCreatorRates(rates)
         setExpandedRates([0, 1, 2].slice(0, Math.min(3, rates.length)))
       }
-    } catch (error) {
-      console.error('Error loading creator data:', error)
+    } catch {
+      // Silently fail
     }
   }
 
@@ -186,12 +223,12 @@ export default function CreatorProfilePage() {
         .order('display_order')
       
       if (links) setSocialLinks(links)
-    } catch (error) {
-      console.error('Error loading social links:', error)
+    } catch {
+      // Silently fail
     }
   }
 
-  async function checkUserReview() {
+  async function checkUserReview(creatorId: string) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
@@ -207,8 +244,7 @@ export default function CreatorProfilePage() {
         .maybeSingle()
 
       setUserHasReviewed(!!review)
-    } catch (error) {
-      console.error('Error checking user review:', error)
+    } catch {
       setUserHasReviewed(false)
     }
   }
@@ -342,8 +378,7 @@ export default function CreatorProfilePage() {
       alert('Message sent successfully')
       setMessage('')
       setShowContactForm(false)
-    } catch (error) {
-      console.error('Error sending message:', error)
+    } catch {
       alert('Failed to send message')
     }
   }
@@ -360,8 +395,8 @@ export default function CreatorProfilePage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="text-gray-600">Creator not found</div>
-          <Link href="/" className="mt-4 inline-block text-gray-900 hover:underline font-medium">
+          <div className="text-gray-600 mb-4">Creator not found</div>
+          <Link href="/" className="text-gray-900 hover:underline font-medium">
             ← Back to home
           </Link>
         </div>
@@ -375,7 +410,6 @@ export default function CreatorProfilePage() {
 
   const memberSince = new Date(creator.created_at).getFullYear()
   const hasCV = creator.cv_url && creator.cv_is_visible === true
-
   const hasEquipment = creatorEquipment.length > 0
   const hasRates = creatorRates.length > 0
   const hasSocialLinks = socialLinks.length > 0
@@ -414,7 +448,7 @@ export default function CreatorProfilePage() {
 
       <main className="container mx-auto px-4 py-6 md:py-8">
         <div className="max-w-6xl mx-auto">
-          {/* Creator Header - Mobile Optimized */}
+          {/* Creator Header */}
           <div className="mb-6 md:mb-8">
             <div className="flex flex-col md:flex-row gap-6 md:gap-8">
               <div className="flex flex-col items-center md:items-start gap-3">
@@ -560,7 +594,7 @@ export default function CreatorProfilePage() {
             </div>
           </div>
 
-          {/* Mobile Tabs - Portfolio, Reviews, More */}
+          {/* Mobile Tabs */}
           <div className="mb-6 border-b border-gray-200">
             <div className="flex">
               <button
@@ -609,12 +643,11 @@ export default function CreatorProfilePage() {
             </div>
           </div>
 
-          {/* Desktop Sidebar - Always visible on md+ */}
+          {/* Desktop Sidebar */}
           <div className="hidden md:block">
             {activeTab === 'portfolio' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2">
-                  {/* Portfolio Grid - Desktop */}
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-4">
                       <h2 className="text-xl font-bold text-gray-900">Portfolio Work</h2>
@@ -713,7 +746,6 @@ export default function CreatorProfilePage() {
                 </div>
 
                 <div className="space-y-6">
-                  {/* Desktop Sidebar Content */}
                   {hasSocialLinks && (
                     <div className="bg-white rounded-xl p-6 border border-gray-200">
                       <h3 className="font-semibold text-gray-900 mb-4">Social Links</h3>
@@ -837,7 +869,7 @@ export default function CreatorProfilePage() {
             )}
           </div>
 
-          {/* Mobile Content - Conditional Rendering */}
+          {/* Mobile Content */}
           <div className="md:hidden">
             {activeTab === 'portfolio' && (
               <div>
@@ -915,7 +947,6 @@ export default function CreatorProfilePage() {
 
             {activeTab === 'more' && (
               <div className="space-y-4">
-                {/* CV Section */}
                 {hasCV && !showCV && (
                   <div className="bg-white rounded-lg p-4 border border-gray-200">
                     <div className="flex items-center justify-between">
@@ -933,7 +964,6 @@ export default function CreatorProfilePage() {
                   </div>
                 )}
 
-                {/* Social Links */}
                 {hasSocialLinks && (
                   <div className="bg-white rounded-lg p-4 border border-gray-200">
                     <h3 className="font-medium text-gray-900 mb-3">Social Links</h3>
@@ -955,7 +985,6 @@ export default function CreatorProfilePage() {
                   </div>
                 )}
 
-                {/* Equipment */}
                 {hasEquipment && (
                   <div className="bg-white rounded-lg p-4 border border-gray-200">
                     <div className="flex items-center gap-2 mb-3">
@@ -980,7 +1009,6 @@ export default function CreatorProfilePage() {
                   </div>
                 )}
 
-                {/* Services & Pricing */}
                 {hasRates && (
                   <div className="bg-white rounded-lg p-4 border border-gray-200">
                     <div className="flex items-center gap-2 mb-3">

@@ -1,4 +1,4 @@
-// components/reviews/ReviewForm.tsx - COMPLETE FIXED VERSION
+﻿// components/reviews/ReviewForm.tsx - COMPLETE FIXED VERSION
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -60,13 +60,6 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
     setSuccess(false)
 
     try {
-      console.log('Submitting review:', {
-        creator_id: creatorId,
-        reviewer_id: currentUserId,
-        rating,
-        comment: comment.trim() || null
-      })
-
       // Submit the review - RLS will prevent duplicates and self-reviews
       const { data, error: submitError } = await supabase
         .from('creator_reviews')
@@ -82,7 +75,6 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
         .single()
 
       if (submitError) {
-        
         // Handle specific errors
         if (submitError.code === '23505') {
           setError('You have already reviewed this creator')
@@ -96,7 +88,6 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
         throw submitError
       }
 
-
       // Check database state BEFORE update
       const { data: beforeProfile } = await supabase
         .from('profiles')
@@ -104,16 +95,11 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
         .eq('id', creatorId)
         .single()
 
-
       // Update creator's rating via RPC
       const { data: updateResult, error: updateError } = await supabase.rpc(
         'force_update_creator_rating',
         { p_creator_id: creatorId }
       )
-
-      if (updateError) {
-      } else {
-      }
 
       // Check database state AFTER RPC update
       const { data: afterProfile } = await supabase
@@ -122,10 +108,8 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
         .eq('id', creatorId)
         .single()
 
-
       // If update didn't work, do DIRECT update
       if (afterProfile && beforeProfile && afterProfile.total_reviews === beforeProfile.total_reviews) {
-        
         // Calculate manually
         const { data: reviews } = await supabase
           .from('creator_reviews')
@@ -139,7 +123,6 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
           ? parseFloat((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(2))
           : 0
 
-        
         // Update directly
         const { error: directError } = await supabase
           .from('profiles')
@@ -150,17 +133,12 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
           })
           .eq('id', creatorId)
 
-        if (directError) {
-        } else {
-          
-          // Verify final state
-          const { data: finalProfile } = await supabase
-            .from('profiles')
-            .select('avg_rating, total_reviews')
-            .eq('id', creatorId)
-            .single()
-          
-        }
+        // Verify final state
+        const { data: finalProfile } = await supabase
+          .from('profiles')
+          .select('avg_rating, total_reviews')
+          .eq('id', creatorId)
+          .single()
       }
 
       // Notify everyone that needs to refresh

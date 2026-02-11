@@ -1,4 +1,4 @@
-// app/api/stripe/webhook/route.ts - FIXED VERSION
+﻿// app/api/stripe/webhook/route.ts - FIXED VERSION
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
@@ -181,13 +181,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       .eq('id', creatorId);
     
     if (profileError) {
-      console.error('❌ Profile update error:', {
-        error: profileError,
-        code: profileError.code,
-        message: profileError.message,
-        details: profileError.details,
-        hint: profileError.hint
-      });
       throw profileError;
     }
     

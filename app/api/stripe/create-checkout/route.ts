@@ -1,4 +1,4 @@
-// app/api/stripe/create-checkout/route.ts - FIXED WITH YEARLY SUPPORT
+﻿// app/api/stripe/create-checkout/route.ts - FIXED WITH YEARLY SUPPORT
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
@@ -207,14 +207,7 @@ export async function POST(request: NextRequest) {
     try {
       // Verify the price exists in Stripe
       const price = await stripe.prices.retrieve(priceId);
-      console.log('Price verified:', { 
-        id: price.id, 
-        amount: price.unit_amount, 
-        currency: price.currency,
-        interval: price.recurring?.interval,
-        interval_count: price.recurring?.interval_count
-      });
-    } catch (error: any) {
+      } catch (error: any) {
       return NextResponse.json(
         { 
           error: 'Invalid price configuration',

@@ -30,6 +30,7 @@ interface PortfolioItem {
   profiles?: {
     id: string
     display_name: string
+    slug:string
     location?: string
     profile_image_url?: string
     creator_type?: string
@@ -73,6 +74,7 @@ export default function PortfolioDetailPage() {
           *,
           profiles!portfolio_items_creator_id_fkey(
             id,
+            slug,
             display_name,
             location,
             profile_image_url,
@@ -402,7 +404,7 @@ export default function PortfolioDetailPage() {
             <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
               <div className="flex items-center gap-3 mb-4">
                 <Link 
-                  href={`/creator/${creator?.id}`}
+                  href={`/creator/${creator?.slug}`}
                   className="h-14 w-14 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden hover:opacity-80 transition-opacity flex-shrink-0"
                 >
                   {creator?.profile_image_url ? (
@@ -463,7 +465,7 @@ export default function PortfolioDetailPage() {
               </div>
 
               <Link
-                href={`/creator/${creator?.id}`}
+                href={`/${creator?.slug}`}
                 className="block w-full mt-4 px-4 py-3 bg-gray-900 text-white hover:bg-gray-800 text-center rounded-lg font-medium transition-colors"
               >
                 View Full Profile

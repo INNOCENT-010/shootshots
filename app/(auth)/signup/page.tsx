@@ -1,4 +1,4 @@
-// app/(auth)/signup/page.tsx - COMPLETE FIXED FILE
+// app/(auth)/signup/page.tsx - WITH PERMANENT SLUG GENERATION
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -31,7 +31,7 @@ import {
   Scissors
 } from 'lucide-react'
 
-// Country and city data
+// Country and city data (keep as is)
 const COUNTRIES = [
   { code: 'NG', name: 'Nigeria', cities: ['Lagos', 'Abuja', 'Port Harcourt', 'Ibadan', 'Kano', 'Benin City', 'Warri'] },
   { code: 'GH', name: 'Ghana', cities: ['Accra', 'Kumasi', 'Tamale', 'Takoradi', 'Cape Coast', 'Sunyani', 'Ho'] },
@@ -55,7 +55,7 @@ const COUNTRIES = [
   { code: 'TZ', name: 'Tanzania', cities: ['Dar es Salaam', 'Dodoma', 'Mwanza', 'Arusha', 'Mbeya', 'Morogoro', 'Tanga'] },
 ]
 
-// Creator types with digital icons
+// Creator types (keep as is)
 const CREATOR_TYPES = [
   { 
     value: 'photographer', 
@@ -202,6 +202,47 @@ const groupedCreatorTypes = CREATOR_TYPES.reduce((groups, type) => {
   return groups
 }, {} as Record<string, typeof CREATOR_TYPES>)
 
+// =============================================
+// NEW: Slug Generator Function
+// =============================================
+async function generateUniqueSlug(displayName: string): Promise<string> {
+  // Step 1: Clean the display name
+  let slug = displayName
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')     // Remove special characters
+    .replace(/\s+/g, '-')            // Replace spaces with hyphens
+    .replace(/-+/g, '-')             // Remove duplicate hyphens
+    .replace(/^-|-$/g, '');          // Trim hyphens from start/end
+  
+  // If empty, use 'creator' as fallback
+  if (!slug) slug = 'creator';
+  
+  // Step 2: Check if slug exists
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('slug')
+    .eq('slug', slug)
+    .maybeSingle();
+  
+  // Step 3: If unique, return it
+  if (!existing) return slug;
+  
+  // Step 4: If taken, try with -2, -3
+  for (let i = 2; i <= 3; i++) {
+    const testSlug = `${slug}-${i}`;
+    const { data: existingTest } = await supabase
+      .from('profiles')
+      .select('slug')
+      .eq('slug', testSlug)
+      .maybeSingle();
+    
+    if (!existingTest) return testSlug;
+  }
+  
+  // Step 5: If all numbers taken, use random suffix
+  return `${slug}-${Math.random().toString(36).substring(2, 6)}`;
+}
+
 export default function SignupPage() {
   const [step, setStep] = useState(1)
   const [email, setEmail] = useState('')
@@ -220,7 +261,6 @@ export default function SignupPage() {
   const currentCities = COUNTRIES.find(c => c.code === selectedCountry)?.cities || []
 
   useEffect(() => {
-    // Reset city when country changes
     if (currentCities.length > 0 && !currentCities.includes(selectedCity)) {
       setSelectedCity(currentCities[0])
     }
@@ -228,7 +268,6 @@ export default function SignupPage() {
 
   const handleNextStep = () => {
     if (step === 1) {
-      // Validate step 1 (creator type + location)
       if (!selectedCreatorType) {
         setError('Please select your creator type')
         return
@@ -264,6 +303,11 @@ export default function SignupPage() {
       const countryName = COUNTRIES.find(c => c.code === selectedCountry)?.name || selectedCountry
       const locationString = `${selectedCity}, ${countryName}`
 
+      // =============================================
+      // NEW: Generate permanent slug BEFORE creating user
+      // =============================================
+      const slug = await generateUniqueSlug(displayName.trim());
+
       // STEP 1: Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.trim(),
@@ -273,7 +317,8 @@ export default function SignupPage() {
             user_type: 'creator',
             display_name: displayName.trim(),
             creator_type: selectedCreatorType,
-            location: locationString
+            location: locationString,
+            slug: slug // Pass slug to auth metadata
           }
         }
       })
@@ -281,13 +326,16 @@ export default function SignupPage() {
       if (authError) throw authError
       if (!authData.user) throw new Error('Failed to create user account')
 
-      // STEP 2: Create profile - MINIMAL VERSION FIRST (only required columns)
+      // =============================================
+      // NEW: Create profile WITH PERMANENT SLUG
+      // =============================================
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
           id: authData.user.id,
           user_type: 'creator',
           display_name: displayName.trim(),
+          slug: slug, // ← PERMANENT SLUG, NEVER CHANGES
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -325,12 +373,16 @@ export default function SignupPage() {
       }
       
       localStorage.setItem('signup_success', 'true')
-      setSuccess('Digital portfolio created successfully!')
+      
+      // =============================================
+      // NEW: Show success message with permanent URL
+      // =============================================
+      setSuccess(`Your permanent portfolio URL: shootshots.com/${slug}`)
       setFadeOut(true)
       
       setTimeout(() => {
         router.push('/dashboard')
-      }, 1500)
+      }, 2000)
 
     } catch (error: any) {
       setError(error.message || 'Signup failed. Please try again.')
@@ -347,7 +399,8 @@ export default function SignupPage() {
             <Cpu className="h-8 w-8 text-white" />
           </div>
           <h2 className="text-xl font-semibold text-white mb-2">Welcome to ShootShots</h2>
-          <p className="text-gray-400 text-sm">Setting up your digital portfolio...</p>
+          <p className="text-gray-400 text-sm">Your permanent portfolio URL is ready</p>
+          <p className="text-green-400 text-xs mt-2 font-mono">shootshots.com/{displayName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'creator'}</p>
           <div className="mt-6">
             <div className="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-green-500 border-r-transparent"></div>
           </div>
@@ -356,10 +409,11 @@ export default function SignupPage() {
     )
   }
 
+  // ... rest of the JSX remains exactly the same ...
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
-        {/* Progress Bar */}
+        {/* Progress Bar - unchanged */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <div className={`text-xs font-medium ${step === 1 ? 'text-green-400' : 'text-gray-500'}`}>
@@ -377,7 +431,7 @@ export default function SignupPage() {
           </div>
         </div>
 
-        {/* Header */}
+        {/* Header - unchanged */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="h-12 w-12 bg-gradient-to-br from-green-600 to-green-800 rounded-xl flex items-center justify-center">
@@ -393,10 +447,9 @@ export default function SignupPage() {
           </p>
         </div>
 
-        {/* Signup Card */}
+        {/* Signup Card - unchanged */}
         <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
           <div className="p-8">
-            {/* Success Message */}
             {success && (
               <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
                 <div className="text-green-400 text-sm">{success}</div>
@@ -404,10 +457,10 @@ export default function SignupPage() {
             )}
             
             <form onSubmit={handleSignup} className="space-y-6">
-              {/* STEP 1: Creator Details (Now First) */}
+              {/* STEP 1: Creator Details - unchanged */}
               {step === 1 && (
                 <>
-                  {/* Creator Type */}
+                  {/* Creator Type - unchanged */}
                   <div>
                     <label className="block text-xs font-medium mb-3 text-gray-400 uppercase tracking-wide">
                       Digital Creator Type *
@@ -451,7 +504,7 @@ export default function SignupPage() {
                     ))}
                   </div>
 
-                  {/* Location */}
+                  {/* Location - unchanged */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-xs font-medium mb-3 text-gray-400 uppercase tracking-wide">
@@ -502,7 +555,7 @@ export default function SignupPage() {
                 </>
               )}
 
-              {/* STEP 2: Account Information (Now Second) */}
+              {/* STEP 2: Account Information - unchanged */}
               {step === 2 && (
                 <>
                   {/* Display Name */}
@@ -518,6 +571,11 @@ export default function SignupPage() {
                       placeholder="Your professional name"
                       required
                     />
+                    <p className="text-xs text-gray-500 mt-2">
+                      Your permanent portfolio URL will be: <span className="text-green-400 font-mono">
+                        shootshots.com/{displayName ? displayName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') : 'your-name'}
+                      </span>
+                    </p>
                   </div>
                   
                   {/* Email */}
@@ -566,14 +624,14 @@ export default function SignupPage() {
                 </>
               )}
 
-              {/* Error Message */}
+              {/* Error Message - unchanged */}
               {error && (
                 <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
                   <div className="text-red-400 text-sm">{error}</div>
                 </div>
               )}
 
-              {/* Navigation Buttons */}
+              {/* Navigation Buttons - unchanged */}
               <div className="flex gap-4 pt-4">
                 {step === 2 && (
                   <button
@@ -619,7 +677,7 @@ export default function SignupPage() {
             </form>
           </div>
           
-          {/* Footer */}
+          {/* Footer - unchanged */}
           <div className="p-8 pt-6 bg-gray-900/30 border-t border-gray-800">
             <div className="text-center">
               <p className="text-gray-400 text-sm mb-4">

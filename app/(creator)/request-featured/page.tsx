@@ -1,4 +1,4 @@
-
+﻿
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -148,13 +148,7 @@ export default function RequestFeaturedPage() {
       const status = calculateSubscriptionStatus(profile, latestSubscription, plans || []);
       setSubscriptionStatus(status);
       
-      console.log('Subscription Status:', {
-        profile,
-        latestSubscription,
-        status
-      });
-      
-    } catch (error) {
+      } catch (error) {
       setMessage({ text: 'Error loading data', type: 'error' });
     } finally {
       setLoading(false);
@@ -552,7 +546,7 @@ export default function RequestFeaturedPage() {
                   href="/upload" 
                   className="text-yellow-400 hover:text-yellow-300"
                 >
-                  Upload your first portfolio item →
+                  Upload your first portfolio item â†’
                 </Link>
               </div>
             ) : (
@@ -597,7 +591,7 @@ export default function RequestFeaturedPage() {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <div className="text-gray-400">🎬 VIDEO</div>
+                              <div className="text-gray-400">ðŸŽ¬ VIDEO</div>
                             </div>
                           )}
                         </div>
@@ -607,7 +601,7 @@ export default function RequestFeaturedPage() {
                             {item.title || 'Untitled'}
                           </div>
                           <div className="text-xs text-gray-400 mt-1">
-                            {item.category} • {new Date(item.created_at).toLocaleDateString()}
+                            {item.category} â€¢ {new Date(item.created_at).toLocaleDateString()}
                           </div>
                         </div>
                         

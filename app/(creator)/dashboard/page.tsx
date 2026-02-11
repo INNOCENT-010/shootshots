@@ -1,4 +1,4 @@
-// app/(creator)/dashboard/page.tsx - TRUE DASHBOARD LAYOUT (MOBILE = DESKTOP)
+// app/(creator)/dashboard/page.tsx - UPDATED WITH PERMANENT SLUG URL
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -22,9 +22,16 @@ interface PortfolioItem {
   }[]
 }
 
+interface UserProfile {
+  id: string
+  slug: string
+  display_name: string
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([])
   const [portfolioLink, setPortfolioLink] = useState<string>('')
   const [copied, setCopied] = useState(false)
@@ -50,8 +57,21 @@ export default function DashboardPage() {
       
       setUser(session.user)
       
-      const link = `${window.location.origin}/creator/${session.user.id}`
-      setPortfolioLink(link)
+      // =============================================
+      // UPDATED: Get user's profile with slug
+      // =============================================
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('id, slug, display_name')
+        .eq('id', session.user.id)
+        .single()
+      
+      if (profileData) {
+        setProfile(profileData)
+        // Use SLUG for URL, not ID
+        const link = `${window.location.origin}/${profileData.slug}`
+        setPortfolioLink(link)
+      }
       
       await loadPortfolioData(session.user.id)
       
@@ -136,7 +156,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Portfolio Link Card - Clean & Compact */}
+        {/* ============================================= */}
+        {/* UPDATED: Portfolio Link Card - Shows CLEAN URL */}
+        {/* ============================================= */}
         <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -166,6 +188,10 @@ export default function DashboardPage() {
               )}
             </button>
           </div>
+          {/* Show preview of clean URL */}
+          <p className="text-xs text-gray-500 mt-2">
+            Your permanent portfolio URL: <span className="font-mono">{profile?.slug ? `/${profile.slug}` : ''}</span>
+          </p>
         </div>
 
         {/* Stats Cards - 3 Column Grid, Always Horizontal */}
@@ -207,8 +233,11 @@ export default function DashboardPage() {
                 <span className="text-sm font-medium text-gray-900 whitespace-nowrap">View Portfolio</span>
               </Link>
               
+              {/* ============================================= */}
+              {/* UPDATED: Preview link uses SLUG, not ID */}
+              {/* ============================================= */}
               <Link
-                href={`/creator/${user?.id}`}
+                href={`/${profile?.slug || user?.id}`}
                 target="_blank"
                 className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0 lg:w-full"
               >

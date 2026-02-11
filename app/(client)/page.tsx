@@ -78,6 +78,7 @@ interface UserProfile {
   profile_image_url?: string
   display_name?: string
   creator_type?: string
+  slug?:string
 }
 
 // Updated digital-focused creator types with digital icons
@@ -149,6 +150,17 @@ export default function HomePage() {
     try {
       const profile = await getUserProfile(userId)
       setUserProfile(profile)
+      if (!userProfile?.slug) {
+        const { data } = await supabase
+        .from('profiles')
+        .select('slug')
+        .eq('id', userId)
+        .single()
+        
+        if (data) {
+          setUserProfile(prev => ({ ...prev, slug: data.slug }))
+        }
+      }
       
       const type = await getUserType(userId)
       setUserType(type)
@@ -258,7 +270,7 @@ export default function HomePage() {
                               <div className="mb-3 p-3 bg-gray-800/50 rounded-lg">
                                 <div className="text-xs text-gray-400 mb-1">Your Portfolio</div>
                                 <Link 
-                                  href={`/creator/${user.id}`}
+                                  href={`${userProfile?.slug}`}
                                   target="_blank"
                                   className="text-sm text-green-400 hover:text-green-300 flex items-center gap-2"
                                   onClick={() => setDropdownOpen(false)}

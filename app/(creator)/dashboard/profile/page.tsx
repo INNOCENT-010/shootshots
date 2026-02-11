@@ -65,7 +65,7 @@ export default function CreatorProfilePage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [expandedRates, setExpandedRates] = useState<number[]>([])
-  
+  const [profile, setProfile] = useState<any>(null)
   const [profileImage, setProfileImage] = useState<File | null>(null)
   const [profileImageUrl, setProfileImageUrl] = useState('')
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([])
@@ -76,8 +76,10 @@ export default function CreatorProfilePage() {
   
   const [formData, setFormData] = useState({
     display_name: '',
+    
     location: '',
     email: '',
+    slug:'',
     whatsapp_number: '',
     instagram_url: '',
     profile_image_url: '',
@@ -169,6 +171,7 @@ export default function CreatorProfilePage() {
       if (profile) {
         setFormData({
           display_name: profile.display_name || '',
+          slug: profile.slug || '',
           location: profile.location || '',
           email: profile.email || user?.email || '',
           whatsapp_number: profile.whatsapp_number || '',
@@ -1424,7 +1427,7 @@ export default function CreatorProfilePage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={() => router.push(`/creator/${user?.id}`)}
+                    onClick={() => router.push(`/${formData.slug}`)}
                     className="flex items-center gap-2 px-4 py-2 text-gray-900 border border-gray-900 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <ExternalLink size={16} />
