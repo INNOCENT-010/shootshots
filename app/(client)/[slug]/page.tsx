@@ -1,4 +1,4 @@
-// app/[slug]/page.tsx
+// app/[slug]/page.tsx - FIXED MOBILE ABOUT SECTION
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -1030,25 +1030,38 @@ export default function CreatorProfilePage() {
 
             {activeTab === 'more' && (
               <div className="space-y-4">
-                {/* ABOUT SECTION - MOVED TO MORE TAB ON MOBILE */}
+                {/* FIXED ABOUT SECTION - NOW SCROLLABLE AND EXPANDABLE ON MOBILE */}
                 {creator.about && (
                   <div className="bg-white rounded-lg p-4 border border-gray-200">
                     <div className="flex items-center gap-2 mb-3">
                       <User size={18} className="text-gray-700" />
                       <h3 className="font-medium text-gray-900">About</h3>
                     </div>
-                    <div 
-                      className={`text-sm text-gray-700 overflow-hidden transition-all duration-300 ${
-                        !showFullAbout ? 'max-h-12' : 'max-h-96 overflow-y-auto pr-1'
-                      }`}
-                      style={showFullAbout ? { scrollbarWidth: 'thin' } : {}}
-                    >
-                      {creator.about}
+                    
+                    {/* About text with expand/collapse */}
+                    <div className="relative">
+                      <div 
+                        className={`text-sm text-gray-700 transition-all duration-300 ${
+                          !showFullAbout 
+                            ? 'max-h-12 overflow-hidden' 
+                            : 'max-h-64 overflow-y-auto pr-1'
+                        }`}
+                        style={showFullAbout ? { scrollbarWidth: 'thin' } : {}}
+                      >
+                        {creator.about}
+                      </div>
+                      
+                      {/* Gradient fade when collapsed */}
+                      {!showFullAbout && creator.about.length > 150 && (
+                        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+                      )}
                     </div>
+                    
+                    {/* Expand/Collapse button */}
                     {creator.about.length > 150 && (
                       <button
                         onClick={() => setShowFullAbout(!showFullAbout)}
-                        className="mt-2 text-xs text-gray-900 font-medium flex items-center gap-1 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors"
+                        className="mt-2 text-xs text-gray-900 font-medium flex items-center gap-1 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors w-fit"
                       >
                         {showFullAbout ? (
                           <>
@@ -1058,11 +1071,12 @@ export default function CreatorProfilePage() {
                         ) : (
                           <>
                             <ChevronDown size={12} />
-                            Read More
+                            Read More ({creator.about.length} characters)
                           </>
                         )}
                       </button>
                     )}
+                    
                     <p className="text-xs text-gray-500 mt-3">
                       Member since {memberSince}
                     </p>
