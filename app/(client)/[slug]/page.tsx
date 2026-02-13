@@ -1,4 +1,4 @@
-// app/[slug]/page.tsx - FIXED MOBILE ABOUT SECTION
+// app/[slug]/page.tsx - COMPLETE PRODUCTION READY FILE
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -10,8 +10,7 @@ import {
   Clock, DollarSign, Smartphone, Check,
   ChevronDown, ChevronUp, Share2, Grid,
   MessageCircle, BookOpen, ExternalLink,
-  ThumbsUp, MessageSquare, Filter, Eye,
-  Play, Heart, Bookmark, FileText, Download,
+  Eye, Play, FileText, Download,
   Github, Linkedin, Twitter, Youtube, Facebook, Globe,
   Package, Layers, MoreHorizontal, Edit3
 } from 'lucide-react'
@@ -115,14 +114,9 @@ export default function CreatorProfilePage() {
   useEffect(() => {
     if (!slug) return
     
-    let isMounted = true
-    const abortController = new AbortController()
-    
     async function loadCreator() {
-      if (!slug) return
-      
       try {
-        const { data: slugData, error: slugError } = await supabase
+        const { data: slugData } = await supabase
           .from('profiles')
           .select('*')
           .eq('slug', slug)
@@ -150,7 +144,6 @@ export default function CreatorProfilePage() {
           await loadCreatorData(slugData.id)
           await loadSocialLinks(slugData.id)
           
-          // Initialize expanded rates with first 3
           const { data: rates } = await supabase
             .from('creator_rates')
             .select('*')
@@ -187,11 +180,6 @@ export default function CreatorProfilePage() {
     }
     
     loadCreator()
-    
-    return () => {
-      isMounted = false
-      abortController.abort()
-    }
   }, [slug, router])
 
   async function loadCreatorData(creatorId: string) {
@@ -215,7 +203,6 @@ export default function CreatorProfilePage() {
         setCreatorRates(rates)
       }
     } catch {
-      // Silently fail
     }
   }
 
@@ -229,7 +216,6 @@ export default function CreatorProfilePage() {
       
       if (links) setSocialLinks(links)
     } catch {
-      // Silently fail
     }
   }
 
@@ -266,22 +252,6 @@ export default function CreatorProfilePage() {
         return <Camera size={16} className="text-gray-600" />
       case 'mobile':
         return <Smartphone size={16} className="text-gray-600" />
-      case 'lens':
-        return <Camera size={16} className="text-gray-600" />
-      case 'drone':
-        return <Camera size={16} className="text-gray-600" />
-      case 'gimbal':
-        return <Camera size={16} className="text-gray-600" />
-      case 'tripod':
-        return <Camera size={16} className="text-gray-600" />
-      case 'lighting':
-        return <Camera size={16} className="text-gray-600" />
-      case 'audio':
-        return <Camera size={16} className="text-gray-600" />
-      case 'software':
-        return <Camera size={16} className="text-gray-600" />
-      case 'accessory':
-        return <Camera size={16} className="text-gray-600" />
       default:
         return <Camera size={16} className="text-gray-600" />
     }
@@ -301,20 +271,6 @@ export default function CreatorProfilePage() {
         return <Youtube size={16} className="text-gray-700" />
       case 'facebook':
         return <Facebook size={16} className="text-gray-700" />
-      case 'behance':
-        return <span className="text-gray-700 text-sm font-medium">Be</span>
-      case 'dribbble':
-        return <span className="text-gray-700 text-sm font-medium">Dr</span>
-      case 'vimeo':
-        return <span className="text-gray-700 text-sm font-medium">V</span>
-      case 'tiktok':
-        return <span className="text-gray-700 text-sm">TikTok</span>
-      case 'soundcloud':
-        return <span className="text-gray-700 text-sm">SoundCloud</span>
-      case 'spotify':
-        return <span className="text-gray-700 text-sm">Spotify</span>
-      case 'pinterest':
-        return <span className="text-gray-700 text-sm">Pinterest</span>
       case 'website':
         return <Globe size={16} className="text-gray-700" />
       default:
@@ -327,8 +283,6 @@ export default function CreatorProfilePage() {
       return <FileText size={20} className="text-red-600" />
     } else if (filetype?.includes('word') || filetype?.includes('doc')) {
       return <FileText size={20} className="text-blue-600" />
-    } else if (filetype?.includes('image')) {
-      return <Camera size={20} className="text-green-600" />
     } else {
       return <FileText size={20} className="text-gray-600" />
     }
@@ -369,10 +323,8 @@ export default function CreatorProfilePage() {
 
   const toggleRates = () => {
     if (expandedRates.length === creatorRates.length) {
-      // Show less - only first 3
       setExpandedRates(creatorRates.slice(0, 3).map((_, i) => i))
     } else {
-      // Show all
       setExpandedRates(creatorRates.map((_, i) => i))
     }
   }
@@ -442,7 +394,6 @@ export default function CreatorProfilePage() {
 
       <main className="container mx-auto px-4 py-6 md:py-8">
         <div className="max-w-6xl mx-auto">
-          {/* Creator Header */}
           <div className="mb-6 md:mb-8">
             <div className="flex flex-col md:flex-row gap-6 md:gap-8">
               <div className="flex flex-col items-center md:items-start gap-3">
@@ -502,7 +453,6 @@ export default function CreatorProfilePage() {
                   </div>
                 </div>
 
-                {/* FIXED ABOUT SECTION - WITH SCROLLING */}
                 {creator.about && (
                   <div className="mb-4">
                     <div 
@@ -526,7 +476,7 @@ export default function CreatorProfilePage() {
                         ) : (
                           <>
                             <ChevronDown size={14} />
-                            Read Full About ({creator.about.length} characters)
+                            Read Full About
                           </>
                         )}
                       </button>
@@ -594,7 +544,6 @@ export default function CreatorProfilePage() {
             </div>
           </div>
 
-          {/* Mobile Tabs */}
           <div className="mb-6 border-b border-gray-200">
             <div className="flex">
               <button
@@ -643,7 +592,6 @@ export default function CreatorProfilePage() {
             </div>
           </div>
 
-          {/* Desktop Layout */}
           <div className="hidden md:block">
             {activeTab === 'portfolio' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -770,7 +718,7 @@ export default function CreatorProfilePage() {
                   {hasEquipment && (
                     <div className="bg-white rounded-xl p-6 border border-gray-200">
                       <div className="flex items-center gap-2 mb-4">
-                        <Camera size={18} className="text-gray-700" />
+                        <Package size={18} className="text-gray-700" />
                         <h3 className="font-semibold text-gray-900">Equipment & Gear</h3>
                       </div>
                       <div className="space-y-3">
@@ -791,7 +739,6 @@ export default function CreatorProfilePage() {
                     </div>
                   )}
 
-                  {/* FIXED DESKTOP RATES - WITH DESCRIPTIONS */}
                   {hasRates && (
                     <div className="bg-white rounded-xl p-6 border border-gray-200">
                       <div className="flex items-center justify-between mb-4">
@@ -828,14 +775,12 @@ export default function CreatorProfilePage() {
                                     {rate.service_type.replace(/_/g, ' ')}
                                   </div>
                                   
-                                  {/* DESCRIPTION - NOW VISIBLE */}
                                   {rate.description && (
                                     <p className="text-sm text-gray-600 mt-1.5 mb-2">
                                       {rate.description}
                                     </p>
                                   )}
                                   
-                                  {/* DURATION & DETAILS */}
                                   <div className="flex items-center gap-3 mt-1.5">
                                     {rate.duration && (
                                       <div className="flex items-center gap-1 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
@@ -849,7 +794,6 @@ export default function CreatorProfilePage() {
                                   </div>
                                 </div>
                                 
-                                {/* PRICE */}
                                 <div className="text-right ml-4">
                                   <div className="font-bold text-gray-900 text-lg">
                                     ₦{rate.rate.toLocaleString()}
@@ -927,7 +871,6 @@ export default function CreatorProfilePage() {
             )}
           </div>
 
-          {/* Mobile Content */}
           <div className="md:hidden">
             {activeTab === 'portfolio' && (
               <div>
@@ -1030,7 +973,6 @@ export default function CreatorProfilePage() {
 
             {activeTab === 'more' && (
               <div className="space-y-4">
-                {/* FIXED ABOUT SECTION - NOW SCROLLABLE AND EXPANDABLE ON MOBILE */}
                 {creator.about && (
                   <div className="bg-white rounded-lg p-4 border border-gray-200">
                     <div className="flex items-center gap-2 mb-3">
@@ -1038,46 +980,47 @@ export default function CreatorProfilePage() {
                       <h3 className="font-medium text-gray-900">About</h3>
                     </div>
                     
-                    {/* About text with expand/collapse */}
                     <div className="relative">
                       <div 
                         className={`text-sm text-gray-700 transition-all duration-300 ${
                           !showFullAbout 
-                            ? 'max-h-12 overflow-hidden' 
-                            : 'max-h-64 overflow-y-auto pr-1'
+                            ? 'line-clamp-3 max-h-[4.5rem]' 
+                            : 'max-h-96 overflow-y-auto pr-2'
                         }`}
                         style={showFullAbout ? { scrollbarWidth: 'thin' } : {}}
                       >
                         {creator.about}
                       </div>
                       
-                      {/* Gradient fade when collapsed */}
                       {!showFullAbout && creator.about.length > 150 && (
                         <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none" />
                       )}
                     </div>
                     
-                    {/* Expand/Collapse button */}
-                    {creator.about.length > 150 && (
+                    {creator.about.length > 150 ? (
                       <button
                         onClick={() => setShowFullAbout(!showFullAbout)}
-                        className="mt-2 text-xs text-gray-900 font-medium flex items-center gap-1 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors w-fit"
+                        className="mt-3 text-xs text-gray-900 font-medium flex items-center gap-1 bg-gray-100 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors w-full justify-center"
                       >
                         {showFullAbout ? (
                           <>
-                            <ChevronUp size={12} />
+                            <ChevronUp size={14} />
                             Show Less
                           </>
                         ) : (
                           <>
-                            <ChevronDown size={12} />
-                            Read More ({creator.about.length} characters)
+                            <ChevronDown size={14} />
+                            Read Full About
                           </>
                         )}
                       </button>
+                    ) : (
+                      <div className="mt-1 text-sm text-gray-700">
+                        {creator.about}
+                      </div>
                     )}
                     
-                    <p className="text-xs text-gray-500 mt-3">
+                    <p className="text-xs text-gray-500 mt-3 pt-2 border-t border-gray-100">
                       Member since {memberSince}
                     </p>
                   </div>
@@ -1124,7 +1067,7 @@ export default function CreatorProfilePage() {
                 {hasEquipment && (
                   <div className="bg-white rounded-lg p-4 border border-gray-200">
                     <div className="flex items-center gap-2 mb-3">
-                      <Camera size={18} className="text-gray-700" />
+                      <Package size={18} className="text-gray-700" />
                       <h3 className="font-medium text-gray-900">Equipment & Gear</h3>
                     </div>
                     <div className="space-y-2">
@@ -1145,7 +1088,6 @@ export default function CreatorProfilePage() {
                   </div>
                 )}
 
-                {/* FIXED MOBILE RATES - WITH DESCRIPTIONS */}
                 {hasRates && (
                   <div className="bg-white rounded-lg p-4 border border-gray-200">
                     <div className="flex items-center justify-between mb-3">
@@ -1175,7 +1117,6 @@ export default function CreatorProfilePage() {
                                 {rate.service_type.replace(/_/g, ' ')}
                               </div>
                               
-                              {/* DESCRIPTION - NOW VISIBLE ON MOBILE */}
                               {rate.description && (
                                 <p className="text-xs text-gray-600 mt-1 line-clamp-2">
                                   {rate.description}
@@ -1209,7 +1150,6 @@ export default function CreatorProfilePage() {
         </div>
       </main>
 
-      {/* Contact Form Modal */}
       {showContactForm && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6">
@@ -1238,7 +1178,7 @@ export default function CreatorProfilePage() {
               </div>
               
               <div className="text-xs text-gray-600">
-                This message will be sent to the creator via Shootshots messaging system.
+                This message will be sent to the creator via the messaging system.
               </div>
               
               <div className="flex gap-3">
