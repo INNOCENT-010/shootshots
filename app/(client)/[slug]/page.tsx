@@ -1,6 +1,5 @@
-// app/(client)/[slug]/page.tsx - COMPLETE FIXED VERSION
+// app/[slug]/page.tsx
 'use client'
-
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -14,7 +13,7 @@ import {
   ThumbsUp, MessageSquare, Filter, Eye,
   Play, Heart, Bookmark, FileText, Download,
   Github, Linkedin, Twitter, Youtube, Facebook, Globe,
-  Package, Layers, MoreHorizontal
+  Package, Layers, MoreHorizontal, Edit3
 } from 'lucide-react'
 import Link from 'next/link'
 import VideoPreview from '@/components/common/VideoPreview'
@@ -102,90 +101,97 @@ export default function CreatorProfilePage() {
   const [message, setMessage] = useState('')
   const [showReviewForm, setShowReviewForm] = useState(false)
   const [activeTab, setActiveTab] = useState<'portfolio' | 'reviews' | 'more'>('portfolio')
-  const [userHasReviewed, setUserHasReviewed] = useState(false)
   const [showCV, setShowCV] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   useEffect(() => {
-  if (!slug) return
-  
-  let isMounted = true
-  const abortController = new AbortController()
-  
-  async function loadCreator() {
-  if (!slug) return
-  
-  try {
-  
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setCurrentUserId(user?.id || null)
+    }
+    getCurrentUser()
+  }, [])
+
+  useEffect(() => {
+    if (!slug) return
     
-    const { data: slugData, error: slugError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('slug', slug)
-      .maybeSingle()
+    let isMounted = true
+    const abortController = new AbortController()
     
-    
-    
-    if (slugData) {
+    async function loadCreator() {
+      if (!slug) return
       
-      setCreator(slugData)
-      
-      // Load other data...
-      const { data: portfolioData } = await supabase
-        .from('portfolio_items')
-        .select(`
-          *,
-          portfolio_media (
-            media_url,
-            media_type,
-            display_order
-          )
-        `)
-        .eq('creator_id', slugData.id)
-        .order('created_at', { ascending: false })
-        .limit(12)
-      
-      
-      setPortfolioItems(portfolioData || [])
-      
-      await loadCreatorData(slugData.id)
-      await loadSocialLinks(slugData.id)
-      await checkUserReview(slugData.id)
-      
-      setLoading(false)
-      return
+      try {
+        const { data: slugData, error: slugError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('slug', slug)
+          .maybeSingle()
+        
+        if (slugData) {
+          setCreator(slugData)
+          
+          const { data: portfolioData } = await supabase
+            .from('portfolio_items')
+            .select(`
+              *,
+              portfolio_media (
+                media_url,
+                media_type,
+                display_order
+              )
+            `)
+            .eq('creator_id', slugData.id)
+            .order('created_at', { ascending: false })
+            .limit(12)
+          
+          setPortfolioItems(portfolioData || [])
+          
+          await loadCreatorData(slugData.id)
+          await loadSocialLinks(slugData.id)
+          
+          // Initialize expanded rates with first 3
+          const { data: rates } = await supabase
+            .from('creator_rates')
+            .select('*')
+            .eq('creator_id', slugData.id)
+            .eq('is_active', true)
+            .order('display_order')
+          
+          if (rates) {
+            setExpandedRates(rates.slice(0, 3).map((_, i) => i))
+          }
+          
+          setLoading(false)
+          return
+        }
+        
+        const { data: idData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', slug)
+          .maybeSingle()
+        
+        if (idData) {
+          router.replace(`/${idData.slug}`)
+          return
+        }
+        
+        setCreator(null)
+        setLoading(false)
+        
+      } catch (err) {
+        setCreator(null)
+        setLoading(false)
+      }
     }
     
-    // Try by ID
+    loadCreator()
     
-    const { data: idData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', slug)
-      .maybeSingle()
-    
-    if (idData) {
-      
-      router.replace(`/${idData.slug}`)
-      return
+    return () => {
+      isMounted = false
+      abortController.abort()
     }
-    
-    
-    setCreator(null)
-    setLoading(false)
-    
-  } catch (err) {
-    
-    setCreator(null)
-    setLoading(false)
-  }
- }
-  
-  loadCreator()
-  
-  return () => {
-    isMounted = false
-    abortController.abort()
-  }
   }, [slug, router])
 
   async function loadCreatorData(creatorId: string) {
@@ -207,7 +213,6 @@ export default function CreatorProfilePage() {
       
       if (rates) {
         setCreatorRates(rates)
-        setExpandedRates([0, 1, 2].slice(0, Math.min(3, rates.length)))
       }
     } catch {
       // Silently fail
@@ -225,27 +230,6 @@ export default function CreatorProfilePage() {
       if (links) setSocialLinks(links)
     } catch {
       // Silently fail
-    }
-  }
-
-  async function checkUserReview(creatorId: string) {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setUserHasReviewed(false)
-        return
-      }
-
-      const { data: review } = await supabase
-        .from('creator_reviews')
-        .select('id')
-        .eq('creator_id', creatorId)
-        .eq('reviewer_id', user.id)
-        .maybeSingle()
-
-      setUserHasReviewed(!!review)
-    } catch {
-      setUserHasReviewed(false)
     }
   }
 
@@ -383,6 +367,16 @@ export default function CreatorProfilePage() {
     }
   }
 
+  const toggleRates = () => {
+    if (expandedRates.length === creatorRates.length) {
+      // Show less - only first 3
+      setExpandedRates(creatorRates.slice(0, 3).map((_, i) => i))
+    } else {
+      // Show all
+      setExpandedRates(creatorRates.map((_, i) => i))
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -508,25 +502,31 @@ export default function CreatorProfilePage() {
                   </div>
                 </div>
 
+                {/* FIXED ABOUT SECTION - WITH SCROLLING */}
                 {creator.about && (
                   <div className="mb-4">
-                    <div className={`text-sm text-gray-700 ${!showFullAbout && 'line-clamp-2'}`}>
+                    <div 
+                      className={`text-sm text-gray-700 overflow-hidden transition-all duration-300 ${
+                        !showFullAbout ? 'max-h-12' : 'max-h-96 overflow-y-auto pr-2'
+                      }`}
+                      style={showFullAbout ? { scrollbarWidth: 'thin' } : {}}
+                    >
                       {creator.about}
                     </div>
                     {creator.about.length > 150 && (
                       <button
                         onClick={() => setShowFullAbout(!showFullAbout)}
-                        className="mt-1 text-xs text-gray-900 hover:text-gray-700 font-medium flex items-center gap-1"
+                        className="mt-2 text-xs text-gray-900 hover:text-gray-700 font-medium flex items-center gap-1 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors"
                       >
                         {showFullAbout ? (
                           <>
-                            <ChevronUp size={12} />
+                            <ChevronUp size={14} />
                             Show Less
                           </>
                         ) : (
                           <>
-                            <ChevronDown size={12} />
-                            Read More
+                            <ChevronDown size={14} />
+                            Read Full About ({creator.about.length} characters)
                           </>
                         )}
                       </button>
@@ -625,7 +625,7 @@ export default function CreatorProfilePage() {
                 </div>
               </button>
 
-              {(hasEquipment || hasRates || hasSocialLinks) && (
+              {(hasEquipment || hasRates || hasSocialLinks || creator.about) && (
                 <button
                   onClick={() => setActiveTab('more')}
                   className={`flex-1 md:hidden px-3 py-2.5 text-xs font-medium border-b-2 transition-colors ${
@@ -643,7 +643,7 @@ export default function CreatorProfilePage() {
             </div>
           </div>
 
-          {/* Desktop Sidebar */}
+          {/* Desktop Layout */}
           <div className="hidden md:block">
             {activeTab === 'portfolio' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -688,7 +688,7 @@ export default function CreatorProfilePage() {
                                     <VideoPreview
                                       src={coverMedia?.media_url}
                                       poster={item.cover_media_url}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                      className="w-full h-full object-cover"
                                     />
                                   )}
                                   
@@ -791,6 +791,7 @@ export default function CreatorProfilePage() {
                     </div>
                   )}
 
+                  {/* FIXED DESKTOP RATES - WITH DESCRIPTIONS */}
                   {hasRates && (
                     <div className="bg-white rounded-xl p-6 border border-gray-200">
                       <div className="flex items-center justify-between mb-4">
@@ -803,26 +804,59 @@ export default function CreatorProfilePage() {
                             {creatorRates.length} service{creatorRates.length !== 1 ? 's' : ''}
                           </p>
                         </div>
+                        
+                        {creatorRates.length > 3 && (
+                          <button
+                            onClick={toggleRates}
+                            className="text-xs text-gray-900 font-medium px-3 py-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                          >
+                            {expandedRates.length === creatorRates.length ? 'Show Less' : `View All (${creatorRates.length})`}
+                          </button>
+                        )}
                       </div>
                       
                       <div className="space-y-3">
-                        {creatorRates.slice(0, 3).map((rate) => (
-                          <div key={rate.id} className="border border-gray-200 rounded-lg">
-                            <div className="px-4 py-3 flex items-center justify-between">
-                              <div className="flex-1">
-                                <div className="font-medium text-gray-900 text-sm capitalize">
-                                  {rate.service_type.replace(/_/g, ' ')}
-                                </div>
-                                {rate.duration && (
-                                  <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
-                                    <Clock size={10} />
-                                    <span>{rate.duration}</span>
+                        {(expandedRates.length === creatorRates.length 
+                          ? creatorRates 
+                          : creatorRates.slice(0, 3)
+                        ).map((rate) => (
+                          <div key={rate.id} className="border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
+                            <div className="px-4 py-3">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-900 text-base capitalize">
+                                    {rate.service_type.replace(/_/g, ' ')}
                                   </div>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <div className="font-bold text-gray-900">
-                                  ₦{rate.rate.toLocaleString()}
+                                  
+                                  {/* DESCRIPTION - NOW VISIBLE */}
+                                  {rate.description && (
+                                    <p className="text-sm text-gray-600 mt-1.5 mb-2">
+                                      {rate.description}
+                                    </p>
+                                  )}
+                                  
+                                  {/* DURATION & DETAILS */}
+                                  <div className="flex items-center gap-3 mt-1.5">
+                                    {rate.duration && (
+                                      <div className="flex items-center gap-1 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                                        <Clock size={12} />
+                                        <span>{rate.duration}</span>
+                                      </div>
+                                    )}
+                                    <div className="text-xs text-gray-500">
+                                      Starting at
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* PRICE */}
+                                <div className="text-right ml-4">
+                                  <div className="font-bold text-gray-900 text-lg">
+                                    ₦{rate.rate.toLocaleString()}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    per project
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -838,11 +872,27 @@ export default function CreatorProfilePage() {
             {activeTab === 'reviews' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2">
+                  {showReviewForm && (
+                    <div className="mb-6">
+                      <ReviewForm 
+                        creatorId={creator.id}
+                        onSuccess={() => {
+                          setShowReviewForm(false)
+                          window.dispatchEvent(new CustomEvent('review-submitted', {
+                            detail: { creatorId: creator.id }
+                          }))
+                        }}
+                        onCancel={() => setShowReviewForm(false)}
+                      />
+                    </div>
+                  )}
+                  
                   <ReviewsDisplay 
                     creatorId={creator.id}
                     showHeader={true}
                   />
                 </div>
+                
                 <div className="space-y-6">
                   <div className="bg-white rounded-xl p-6 border border-gray-200">
                     <h3 className="font-semibold text-gray-900 mb-4">About {creator.display_name}</h3>
@@ -863,6 +913,14 @@ export default function CreatorProfilePage() {
                         <div className="text-sm text-gray-600 capitalize">{creator.creator_type.replace(/_/g, ' ')}</div>
                       </div>
                     </div>
+                    
+                    <button
+                      onClick={() => setShowReviewForm(!showReviewForm)}
+                      className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                    >
+                      <Edit3 size={14} />
+                      <span>{showReviewForm ? 'Close Review Form' : 'Write a Review'}</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -903,9 +961,11 @@ export default function CreatorProfilePage() {
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
-                                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                                  <Play size={20} className="text-gray-600" />
-                                </div>
+                                <VideoPreview
+                                  src={coverMedia?.media_url}
+                                  poster={item.cover_media_url}
+                                  className="w-full h-full object-cover"
+                                />
                               )}
                               {item.media_count > 1 && (
                                 <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
@@ -937,7 +997,30 @@ export default function CreatorProfilePage() {
             )}
 
             {activeTab === 'reviews' && (
-              <div>
+              <div className="space-y-6">
+                {showReviewForm && (
+                  <div className="mb-6">
+                    <ReviewForm 
+                      creatorId={creator.id}
+                      onSuccess={() => {
+                        setShowReviewForm(false)
+                        window.dispatchEvent(new CustomEvent('review-submitted', {
+                          detail: { creatorId: creator.id }
+                        }))
+                      }}
+                      onCancel={() => setShowReviewForm(false)}
+                    />
+                  </div>
+                )}
+                
+                <button
+                  onClick={() => setShowReviewForm(!showReviewForm)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm"
+                >
+                  <Edit3 size={16} />
+                  <span>{showReviewForm ? 'Close Review Form' : 'Write a Review'}</span>
+                </button>
+                
                 <ReviewsDisplay 
                   creatorId={creator.id}
                   showHeader={true}
@@ -947,6 +1030,45 @@ export default function CreatorProfilePage() {
 
             {activeTab === 'more' && (
               <div className="space-y-4">
+                {/* ABOUT SECTION - MOVED TO MORE TAB ON MOBILE */}
+                {creator.about && (
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <User size={18} className="text-gray-700" />
+                      <h3 className="font-medium text-gray-900">About</h3>
+                    </div>
+                    <div 
+                      className={`text-sm text-gray-700 overflow-hidden transition-all duration-300 ${
+                        !showFullAbout ? 'max-h-12' : 'max-h-96 overflow-y-auto pr-1'
+                      }`}
+                      style={showFullAbout ? { scrollbarWidth: 'thin' } : {}}
+                    >
+                      {creator.about}
+                    </div>
+                    {creator.about.length > 150 && (
+                      <button
+                        onClick={() => setShowFullAbout(!showFullAbout)}
+                        className="mt-2 text-xs text-gray-900 font-medium flex items-center gap-1 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        {showFullAbout ? (
+                          <>
+                            <ChevronUp size={12} />
+                            Show Less
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown size={12} />
+                            Read More
+                          </>
+                        )}
+                      </button>
+                    )}
+                    <p className="text-xs text-gray-500 mt-3">
+                      Member since {memberSince}
+                    </p>
+                  </div>
+                )}
+
                 {hasCV && !showCV && (
                   <div className="bg-white rounded-lg p-4 border border-gray-200">
                     <div className="flex items-center justify-between">
@@ -992,7 +1114,7 @@ export default function CreatorProfilePage() {
                       <h3 className="font-medium text-gray-900">Equipment & Gear</h3>
                     </div>
                     <div className="space-y-2">
-                      {creatorEquipment.slice(0, 3).map((equip) => (
+                      {creatorEquipment.slice(0, 5).map((equip) => (
                         <div key={equip.id} className="flex items-start gap-2">
                           <div className="mt-0.5">
                             {getEquipmentIcon(equip.category)}
@@ -1009,25 +1131,58 @@ export default function CreatorProfilePage() {
                   </div>
                 )}
 
+                {/* FIXED MOBILE RATES - WITH DESCRIPTIONS */}
                 {hasRates && (
                   <div className="bg-white rounded-lg p-4 border border-gray-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <DollarSign size={18} className="text-gray-700" />
-                      <h3 className="font-medium text-gray-900">Services & Pricing</h3>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <DollarSign size={18} className="text-gray-700" />
+                        <h3 className="font-medium text-gray-900">Services & Pricing</h3>
+                      </div>
+                      {creatorRates.length > 3 && (
+                        <button
+                          onClick={toggleRates}
+                          className="text-xs text-gray-900 font-medium px-2 py-1 bg-gray-100 rounded"
+                        >
+                          {expandedRates.length === creatorRates.length ? 'Less' : `+${creatorRates.length - 3} more`}
+                        </button>
+                      )}
                     </div>
+                    
                     <div className="space-y-2">
-                      {creatorRates.slice(0, 3).map((rate) => (
-                        <div key={rate.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                          <div>
-                            <div className="font-medium text-gray-900 text-sm capitalize">
-                              {rate.service_type.replace(/_/g, ' ')}
+                      {(expandedRates.length === creatorRates.length 
+                        ? creatorRates 
+                        : creatorRates.slice(0, 3)
+                      ).map((rate) => (
+                        <div key={rate.id} className="border border-gray-200 rounded-lg p-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900 text-sm capitalize">
+                                {rate.service_type.replace(/_/g, ' ')}
+                              </div>
+                              
+                              {/* DESCRIPTION - NOW VISIBLE ON MOBILE */}
+                              {rate.description && (
+                                <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                  {rate.description}
+                                </p>
+                              )}
+                              
+                              {rate.duration && (
+                                <div className="flex items-center gap-1 text-xs text-gray-500 mt-2 bg-gray-50 px-2 py-1 rounded inline-flex">
+                                  <Clock size={10} />
+                                  <span>{rate.duration}</span>
+                                </div>
+                              )}
                             </div>
-                            {rate.duration && (
-                              <div className="text-xs text-gray-600">{rate.duration}</div>
-                            )}
-                          </div>
-                          <div className="font-bold text-gray-900">
-                            ₦{rate.rate.toLocaleString()}
+                            <div className="text-right ml-2">
+                              <div className="font-bold text-gray-900">
+                                ₦{rate.rate.toLocaleString()}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                /project
+                              </div>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -1040,6 +1195,7 @@ export default function CreatorProfilePage() {
         </div>
       </main>
 
+      {/* Contact Form Modal */}
       {showContactForm && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6">

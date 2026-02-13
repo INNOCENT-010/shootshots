@@ -1,4 +1,4 @@
-// app/(creator)/profile/page.tsx - COMPLETE WITH SOCIAL LINKS
+// app/(creator)/profile/page.tsx - COMPLETE FIXED VERSION WITH LOCALSTORAGE
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -9,12 +9,13 @@ import {
   Camera, DollarSign, Clock, Plus, Trash2,
   BookOpen, Smartphone, Package, Check,
   ChevronDown, ChevronUp, Eye, Edit,
-  Star, Calendar, MessageCircle, Share2, ExternalLink,
+  Star, Calendar, MessageCircle, Play, Share2, ExternalLink,
   Grid, ArrowLeft, FileText, File, Download, Eye as EyeIcon, EyeOff,
   Globe, Github, Linkedin, Twitter, Youtube, Facebook
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import VideoPreview from '@/components/common/VideoPreview'
 
 interface EquipmentItem {
   id?: string
@@ -56,30 +57,59 @@ interface CreatorSocialLink {
   display_order: number
 }
 
+interface ProfileFormData {
+  display_name: string
+  slug: string
+  location: string
+  email: string
+  whatsapp_number: string
+  instagram_url: string
+  profile_image_url: string
+  about: string
+  creator_type: string
+  is_available: boolean
+  rate_per_hour: number
+}
+
+function Copy({ size = 24, ...props }: React.SVGProps<SVGSVGElement> & { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  )
+}
+
 export default function CreatorProfilePage() {
   const { user } = useAuth()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit')
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [expandedRates, setExpandedRates] = useState<number[]>([])
-  const [profile, setProfile] = useState<any>(null)
-  const [profileImage, setProfileImage] = useState<File | null>(null)
-  const [profileImageUrl, setProfileImageUrl] = useState('')
-  const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([])
-  const [cvFile, setCvFile] = useState<File | null>(null)
-  const [cvInfo, setCvInfo] = useState<CVInfo | null>(null)
-  const [isUploadingCV, setIsUploadingCV] = useState(false)
-  const [socialLinks, setSocialLinks] = useState<CreatorSocialLink[]>([])
   
-  const [formData, setFormData] = useState({
+  // ===== STORAGE KEYS =====
+  const STORAGE_KEYS = {
+    FORM: `profile_form_${user?.id}`,
+    EQUIPMENT: `profile_equipment_${user?.id}`,
+    RATES: `profile_rates_${user?.id}`,
+    SOCIAL: `profile_social_${user?.id}`,
+    CV: `profile_cv_${user?.id}`
+  }
+
+  // ===== FORM STATE =====
+  const [formData, setFormDataState] = useState<ProfileFormData>({
     display_name: '',
-    
+    slug: '',
     location: '',
     email: '',
-    slug:'',
     whatsapp_number: '',
     instagram_url: '',
     profile_image_url: '',
@@ -89,75 +119,151 @@ export default function CreatorProfilePage() {
     rate_per_hour: 0
   })
 
-  const [equipment, setEquipment] = useState<EquipmentItem[]>([
-    { category: 'camera', name: '', description: '' }
-  ])
+  // ===== ARRAY STATES =====
+  const [equipment, setEquipmentState] = useState<EquipmentItem[]>([])
+  const [rates, setRatesState] = useState<RateItem[]>([])
+  const [socialLinks, setSocialLinksState] = useState<CreatorSocialLink[]>([])
+  const [cvInfo, setCvInfoState] = useState<CVInfo | null>(null)
 
-  const [rates, setRates] = useState<RateItem[]>([
-    { 
-      service_type: 'hourly_rate', 
-      rate: 0, 
-      description: 'Standard hourly rate', 
-      duration: '1 hour',
-      display_order: 0
+  // ===== UI STATE (NOT PERSISTED) =====
+  const [expandedRates, setExpandedRates] = useState<number[]>([])
+  const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [profileImage, setProfileImage] = useState<File | null>(null)
+  const [profileImageUrl, setProfileImageUrl] = useState('')
+  const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([])
+  const [cvFile, setCvFile] = useState<File | null>(null)
+  const [isUploadingCV, setIsUploadingCV] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false)
+  const [savedFormData, setSavedFormData] = useState<ProfileFormData | null>(null)
+
+  // ===== WRAPPER FUNCTIONS WITH AUTOSAVE =====
+  const setFormData = (updater: Partial<ProfileFormData> | ((prev: ProfileFormData) => ProfileFormData)) => {
+    setFormDataState(prev => {
+      const newData = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater }
+      if (user?.id) {
+        localStorage.setItem(STORAGE_KEYS.FORM, JSON.stringify(newData))
+        setLastSaved(new Date())
+      }
+      return newData
+    })
+  }
+
+  const setEquipment = (updater: EquipmentItem[] | ((prev: EquipmentItem[]) => EquipmentItem[])) => {
+    setEquipmentState(prev => {
+      const newData = typeof updater === 'function' ? updater(prev) : updater
+      if (user?.id) {
+        localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(newData))
+      }
+      return newData
+    })
+  }
+
+  const setRates = (updater: RateItem[] | ((prev: RateItem[]) => RateItem[])) => {
+    setRatesState(prev => {
+      const newData = typeof updater === 'function' ? updater(prev) : updater
+      if (user?.id) {
+        localStorage.setItem(STORAGE_KEYS.RATES, JSON.stringify(newData))
+      }
+      return newData
+    })
+  }
+
+  const setSocialLinks = (updater: CreatorSocialLink[] | ((prev: CreatorSocialLink[]) => CreatorSocialLink[])) => {
+    setSocialLinksState(prev => {
+      const newData = typeof updater === 'function' ? updater(prev) : updater
+      if (user?.id) {
+        localStorage.setItem(STORAGE_KEYS.SOCIAL, JSON.stringify(newData))
+      }
+      return newData
+    })
+  }
+
+  const setCvInfo = (updater: CVInfo | null | ((prev: CVInfo | null) => CVInfo | null)) => {
+    setCvInfoState(prev => {
+      const newData = typeof updater === 'function' ? updater(prev) : updater
+      if (user?.id) {
+        if (newData) {
+          localStorage.setItem(STORAGE_KEYS.CV, JSON.stringify(newData))
+        } else {
+          localStorage.removeItem(STORAGE_KEYS.CV)
+        }
+      }
+      return newData
+    })
+  }
+
+  // ===== CLEAR ALL DRAFTS =====
+  const clearAllDrafts = () => {
+    if (user?.id) {
+      localStorage.removeItem(STORAGE_KEYS.FORM)
+      localStorage.removeItem(STORAGE_KEYS.EQUIPMENT)
+      localStorage.removeItem(STORAGE_KEYS.RATES)
+      localStorage.removeItem(STORAGE_KEYS.SOCIAL)
+      localStorage.removeItem(STORAGE_KEYS.CV)
+      setLastSaved(null)
     }
-  ])
+  }
 
-  const equipmentCategories = [
-    { value: 'camera', label: 'Camera' },
-    { value: 'mobile', label: 'Mobile Device' },
-    { value: 'lens', label: 'Lens' },
-    { value: 'lighting', label: 'Lighting' },
-    { value: 'audio', label: 'Audio' },
-    { value: 'software', label: 'Software' },
-    { value: 'accessory', label: 'Accessory' },
-    { value: 'drone', label: 'Drone' },
-    { value: 'gimbal', label: 'Gimbal' },
-    { value: 'tripod', label: 'Tripod' }
-  ]
-
-  const serviceTypeSuggestions = [
-    'Hourly Rate',
-    'Portrait Session',
-    'Wedding Photography',
-    'Event Coverage',
-    'Product Photography',
-    'Real Estate Photography',
-    'Fashion Photography',
-    'Commercial Photography',
-    'Video Production',
-    'Photo Editing',
-    'Video Editing',
-    'Drone Photography',
-    'Headshot Session',
-    'Family Portrait',
-    'Maternity Shoot',
-    'Newborn Photography',
-    'Corporate Event',
-    'Music Video',
-    'Documentary',
-    'Social Media Content',
-    'Logo Design',
-    'Brand Identity',
-    'UI/UX Design',
-    'Web Design',
-    '3D Modeling',
-    'Animation',
-    'Voice Over',
-    'Sound Design',
-    'Music Production'
-  ]
-
+  // ===== LOAD DATA =====
   useEffect(() => {
     if (user) {
-      loadProfile()
-      loadPortfolioItems()
-      loadCV()
-      loadSocialLinks()
-      setLoading(false)
+      const initializeData = async () => {
+        const savedForm = localStorage.getItem(STORAGE_KEYS.FORM)
+        const savedEquipment = localStorage.getItem(STORAGE_KEYS.EQUIPMENT)
+        const savedRates = localStorage.getItem(STORAGE_KEYS.RATES)
+        const savedSocial = localStorage.getItem(STORAGE_KEYS.SOCIAL)
+        const savedCv = localStorage.getItem(STORAGE_KEYS.CV)
+
+        const hasLocalData = savedForm || savedEquipment || savedRates || savedSocial || savedCv
+
+        if (hasLocalData) {
+          setShowRestoreDialog(true)
+          
+          if (savedForm) {
+            const parsed = JSON.parse(savedForm)
+            setSavedFormData(parsed)
+            setFormDataState(parsed)
+            setProfileImageUrl(parsed.profile_image_url || '')
+          }
+          if (savedEquipment) setEquipmentState(JSON.parse(savedEquipment))
+          if (savedRates) setRatesState(JSON.parse(savedRates))
+          if (savedSocial) setSocialLinksState(JSON.parse(savedSocial))
+          if (savedCv) setCvInfoState(JSON.parse(savedCv))
+        } else {
+          await loadProfile()
+          await loadCV()
+          await loadSocialLinks()
+        }
+        
+        await loadPortfolioItems()
+        setLoading(false)
+      }
+      
+      initializeData()
     }
   }, [user])
 
+  // ===== RESTORE OR DISCARD =====
+  const restoreDraft = () => {
+    setShowRestoreDialog(false)
+    setSavedFormData(null)
+  }
+
+  const discardDraft = () => {
+    clearAllDrafts()
+    loadProfile()
+    loadCV()
+    loadSocialLinks()
+    setShowRestoreDialog(false)
+    setSavedFormData(null)
+  }
+
+  // ===== LOAD FROM SUPABASE =====
   async function loadProfile() {
     try {
       const { data: profile, error: profileError } = await supabase
@@ -169,7 +275,7 @@ export default function CreatorProfilePage() {
       if (profileError) throw profileError
 
       if (profile) {
-        setFormData({
+        setFormDataState({
           display_name: profile.display_name || '',
           slug: profile.slug || '',
           location: profile.location || '',
@@ -191,7 +297,9 @@ export default function CreatorProfilePage() {
           .order('category')
         
         if (equipmentData && equipmentData.length > 0) {
-          setEquipment(equipmentData)
+          setEquipmentState(equipmentData)
+        } else {
+          setEquipmentState([{ category: 'camera', name: '', description: '' }])
         }
 
         const { data: ratesData } = await supabase
@@ -202,11 +310,20 @@ export default function CreatorProfilePage() {
           .order('display_order')
         
         if (ratesData && ratesData.length > 0) {
-          setRates(ratesData)
+          setRatesState(ratesData)
           setExpandedRates([0, 1, 2].slice(0, Math.min(3, ratesData.length)))
+        } else {
+          setRatesState([{ 
+            service_type: '', 
+            rate: 0, 
+            description: '', 
+            duration: '',
+            display_order: 0 
+          }])
         }
       }
     } catch (error) {
+      console.error('Error loading profile:', error)
     }
   }
 
@@ -221,6 +338,7 @@ export default function CreatorProfilePage() {
       
       setPortfolioItems(items || [])
     } catch (error) {
+      console.error('Error loading portfolio:', error)
     }
   }
 
@@ -235,7 +353,7 @@ export default function CreatorProfilePage() {
       if (error) throw error
 
       if (profile?.cv_url) {
-        setCvInfo({
+        setCvInfoState({
           url: profile.cv_url,
           filename: profile.cv_filename || 'CV',
           filetype: profile.cv_filetype || 'pdf',
@@ -245,6 +363,7 @@ export default function CreatorProfilePage() {
         })
       }
     } catch (error) {
+      console.error('Error loading CV:', error)
     }
   }
 
@@ -257,7 +376,7 @@ export default function CreatorProfilePage() {
         .order('display_order')
 
       if (links && links.length > 0) {
-        setSocialLinks(links)
+        setSocialLinksState(links)
       } else {
         const { data: profile } = await supabase
           .from('profiles')
@@ -266,17 +385,21 @@ export default function CreatorProfilePage() {
           .single()
 
         if (profile?.instagram_url) {
-          setSocialLinks([{
+          setSocialLinksState([{
             platform: 'instagram',
             url: profile.instagram_url,
             display_order: 0
           }])
+        } else {
+          setSocialLinksState([])
         }
       }
     } catch (error) {
+      console.error('Error loading social links:', error)
     }
   }
 
+  // ===== FORM HANDLERS =====
   const toggleRateExpansion = (index: number) => {
     setExpandedRates(prev => 
       prev.includes(index) 
@@ -465,8 +588,12 @@ export default function CreatorProfilePage() {
         .eq('id', user.id)
 
       if (error) throw error
-
-      setCvInfo(prev => prev ? { ...prev, is_visible: !prev.is_visible } : null)
+      
+      setCvInfo({ 
+        ...cvInfo, 
+        is_visible: !cvInfo.is_visible 
+      })
+      
       setSuccess(`CV is now ${!cvInfo.is_visible ? 'visible' : 'hidden'} on your profile`)
     } catch (error: any) {
       setError(error.message || 'Failed to update CV visibility')
@@ -528,14 +655,16 @@ export default function CreatorProfilePage() {
 
       return urlData.publicUrl
     } catch (error) {
+      console.error('Error uploading image:', error)
       return formData.profile_image_url
     }
   }
 
-  const handleInputChange = (field: keyof typeof formData, value: string | boolean | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+  const handleInputChange = (field: keyof ProfileFormData, value: string | boolean | number) => {
+    setFormData({ [field]: value })
   }
 
+  // ===== SUBMIT =====
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
@@ -550,6 +679,7 @@ export default function CreatorProfilePage() {
         const uploadedUrl = await uploadProfileImage()
         if (uploadedUrl) {
           finalProfileImageUrl = uploadedUrl
+          setFormData({ profile_image_url: uploadedUrl })
         }
       }
 
@@ -642,11 +772,10 @@ export default function CreatorProfilePage() {
         if (socialError) throw socialError
       }
 
+      clearAllDrafts()
       setSuccess('Profile updated successfully!')
       setProfileImage(null)
-      
-      loadProfile()
-      loadSocialLinks()
+      await loadPortfolioItems()
       
     } catch (error: any) {
       setError(error.message || 'Failed to update profile')
@@ -654,6 +783,66 @@ export default function CreatorProfilePage() {
       setSaving(false)
     }
   }
+
+  // ===== CLEANUP ON SIGN OUT =====
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT' && user?.id) {
+        Object.keys(localStorage).forEach(key => {
+          if (key.includes(user.id)) {
+            localStorage.removeItem(key)
+          }
+        })
+      }
+    })
+
+    return () => subscription?.unsubscribe()
+  }, [user])
+
+  const equipmentCategories = [
+    { value: 'camera', label: 'Camera' },
+    { value: 'mobile', label: 'Mobile Device' },
+    { value: 'lens', label: 'Lens' },
+    { value: 'lighting', label: 'Lighting' },
+    { value: 'audio', label: 'Audio' },
+    { value: 'software', label: 'Software' },
+    { value: 'accessory', label: 'Accessory' },
+    { value: 'drone', label: 'Drone' },
+    { value: 'gimbal', label: 'Gimbal' },
+    { value: 'tripod', label: 'Tripod' }
+  ]
+
+  const serviceTypeSuggestions = [
+    'Hourly Rate',
+    'Portrait Session',
+    'Wedding Photography',
+    'Event Coverage',
+    'Product Photography',
+    'Real Estate Photography',
+    'Fashion Photography',
+    'Commercial Photography',
+    'Video Production',
+    'Photo Editing',
+    'Video Editing',
+    'Drone Photography',
+    'Headshot Session',
+    'Family Portrait',
+    'Maternity Shoot',
+    'Newborn Photography',
+    'Corporate Event',
+    'Music Video',
+    'Documentary',
+    'Social Media Content',
+    'Logo Design',
+    'Brand Identity',
+    'UI/UX Design',
+    'Web Design',
+    '3D Modeling',
+    'Animation',
+    'Voice Over',
+    'Sound Design',
+    'Music Production'
+  ]
 
   const getEquipmentIcon = (category: string) => {
     switch(category.toLowerCase()) {
@@ -703,13 +892,13 @@ export default function CreatorProfilePage() {
       case 'vimeo':
         return <span className="text-gray-700 text-sm font-medium">V</span>
       case 'tiktok':
-        return <span className="text-gray-700 text-sm">♬</span>
+        return <span className="text-gray-700 text-sm">TikTok</span>
       case 'soundcloud':
-        return <span className="text-gray-700 text-sm">☁️</span>
+        return <span className="text-gray-700 text-sm">SoundCloud</span>
       case 'spotify':
-        return <span className="text-gray-700 text-sm">🎵</span>
+        return <span className="text-gray-700 text-sm">Spotify</span>
       case 'pinterest':
-        return <span className="text-gray-700 text-sm">📌</span>
+        return <span className="text-gray-700 text-sm">Pinterest</span>
       case 'website':
         return <Globe size={16} className="text-gray-700" />
       default:
@@ -760,7 +949,10 @@ export default function CreatorProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-gray-600">Loading profile...</div>
+        <div className="text-center px-4">
+          <div className="h-8 w-8 border-2 border-gray-800 border-r-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 text-sm">Loading profile...</p>
+        </div>
       </div>
     )
   }
@@ -768,6 +960,39 @@ export default function CreatorProfilePage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
+        {/* Restore Draft Dialog */}
+        {showRestoreDialog && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
+                  <FileText size={24} className="text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Unsaved Changes Found
+                </h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  You have unsaved changes from your last editing session. Would you like to restore them?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={restoreDraft}
+                    className="flex-1 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                  >
+                    Restore Changes
+                  </button>
+                  <button
+                    onClick={discardDraft}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Discard
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
@@ -782,6 +1007,11 @@ export default function CreatorProfilePage() {
               <span>Back to Dashboard</span>
             </Link>
           </div>
+          {lastSaved && !showRestoreDialog && (
+            <div className="mt-2 text-xs text-gray-500">
+              Last saved: {lastSaved.toLocaleTimeString()}
+            </div>
+          )}
         </div>
 
         <div className="mb-6">
@@ -869,6 +1099,37 @@ export default function CreatorProfilePage() {
                       />
                     </div>
 
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium mb-2 text-gray-900">
+                        <Globe size={14} className="inline mr-2 text-gray-700" />
+                        Permanent Portfolio URL
+                      </label>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center p-3 bg-gray-100 border border-gray-300 rounded-lg">
+                            <span className="text-gray-600 text-sm mr-1">shootshots.com/</span>
+                            <span className="font-mono text-gray-900 font-medium">{formData.slug || 'your-url'}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = `https://shootshots.com/${formData.slug}`
+                            navigator.clipboard.writeText(url)
+                            setSuccess('Portfolio URL copied to clipboard!')
+                            setTimeout(() => setSuccess(''), 3000)
+                          }}
+                          className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                        >
+                          <Copy size={16} />
+                          <span>Copy URL</span>
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        This is your permanent portfolio URL. It cannot be changed.
+                      </p>
+                    </div>
+
                     <div className="mb-4">
                       <label className="block text-sm font-medium mb-2 text-gray-900">
                         <User size={14} className="inline mr-2 text-gray-700" />
@@ -880,7 +1141,7 @@ export default function CreatorProfilePage() {
                           onChange={(e) => handleInputChange('creator_type', e.target.value)}
                           className="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:border-gray-900 focus:outline-none text-gray-900 appearance-none"
                         >
-                          <optgroup label=" DIGITAL VISUAL">
+                          <optgroup label="DIGITAL VISUAL">
                             <option value="photographer">Photographer</option>
                             <option value="videographer">Videographer</option>
                             <option value="model">Model</option>
@@ -895,14 +1156,14 @@ export default function CreatorProfilePage() {
                             <option value="ui_ux_designer">UI/UX Designer</option>
                             <option value="web_designer">Web Designer</option>
                           </optgroup>
-                          <optgroup label=" ANIMATION & 3D">
+                          <optgroup label="ANIMATION & 3D">
                             <option value="animator">Animator</option>
                             <option value="3d_artist">3D Artist</option>
                             <option value="motion_designer">Motion Designer</option>
                             <option value="vfx_artist">VFX Artist</option>
                             <option value="game_artist">Game Artist</option>
                           </optgroup>
-                          <optgroup label=" SPECIALIZED">
+                          <optgroup label="SPECIALIZED">
                             <option value="sound_designer">Sound Designer</option>
                             <option value="music_producer">Music Producer</option>
                             <option value="voice_artist">Voice Artist</option>
@@ -1196,7 +1457,6 @@ export default function CreatorProfilePage() {
                               onChange={(e) => updateEquipment(index, 'category', e.target.value)}
                               className="w-full p-2.5 bg-white border border-gray-300 rounded-lg focus:border-gray-900 focus:outline-none text-gray-900"
                             >
-                              <option value="">Select category</option>
                               {equipmentCategories.map(cat => (
                                 <option key={cat.value} value={cat.value}>{cat.label}</option>
                               ))}
@@ -1492,8 +1752,6 @@ export default function CreatorProfilePage() {
                         </div>
                       </div>
 
-                      
-
                       {formData.about && (
                         <div className="mb-6">
                           <div className="flex items-center gap-2 mb-2">
@@ -1507,7 +1765,7 @@ export default function CreatorProfilePage() {
                       )}
 
                       <div className="flex flex-wrap gap-3">
-                        <button className="flex items-center gap-2 px-2 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors">
+                        <button className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors">
                           <MessageCircle size={16} />
                           <span>Contact for Booking</span>
                         </button>
@@ -1523,27 +1781,27 @@ export default function CreatorProfilePage() {
                             <span>WhatsApp</span>
                           </a>
                         )}
-
-                        {socialLinks.filter(l => l.url.trim()).length > 0 && (
-                          <div className="mt-6">
-                            <h3 className="font-semibold text-gray-900 mb-3">Find Me On</h3>
-                            <div className="flex flex-wrap gap-2">
-                              {socialLinks.filter(l => l.url.trim()).map((link, index) => (
-                                <a
-                                  key={index}
-                                  href={link.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                                >
-                                  {getSocialIcon(link.platform)}
-                                  <span className="text-sm text-gray-900 capitalize">{link.platform}</span>
-                                </a>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                       </div>
+
+                      {socialLinks.filter(l => l.url.trim()).length > 0 && (
+                        <div className="mt-6">
+                          <h3 className="font-semibold text-gray-900 mb-3">Find Me On</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {socialLinks.filter(l => l.url.trim()).map((link, index) => (
+                              <a
+                                key={index}
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                              >
+                                {getSocialIcon(link.platform)}
+                                <span className="text-sm text-gray-900 capitalize">{link.platform}</span>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1573,37 +1831,59 @@ export default function CreatorProfilePage() {
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {portfolioItems.map((item) => (
-                            <div key={item.id} className="group cursor-pointer">
-                              <div className="bg-gray-50 rounded-xl overflow-hidden border border-gray-200">
-                                <div className="relative aspect-[4/3] overflow-hidden">
-                                  {item.cover_media_url ? (
-                                    <img
-                                      src={item.cover_media_url}
-                                      alt={item.title}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                                      <Camera size={40} className="text-gray-500" />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="p-4">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <h3 className="font-semibold text-gray-900 line-clamp-1">
-                                      {item.title || 'Untitled Project'}
-                                    </h3>
+                          {portfolioItems.map((item) => {
+                            const isVideo = item.cover_media_url?.includes('video') || 
+                                          item.cover_media_url?.includes('.mp4') || 
+                                          item.cover_media_url?.includes('.mov') || 
+                                          item.cover_media_url?.includes('webm') ||
+                                          item.cover_media_url?.includes('m3u8');
+                            
+                            return (
+                              <div key={item.id} className="group cursor-pointer">
+                                <div className="bg-gray-50 rounded-xl overflow-hidden border border-gray-200">
+                                  <div className="relative aspect-[4/3] overflow-hidden">
+                                    {item.cover_media_url ? (
+                                      isVideo ? (
+                                        <VideoPreview
+                                          src={item.cover_media_url}
+                                          poster={item.cover_media_url}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <img
+                                          src={item.cover_media_url}
+                                          alt={item.title}
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                      )
+                                    ) : (
+                                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                        <Camera size={40} className="text-gray-500" />
+                                      </div>
+                                    )}
+                                    
+                                    {isVideo && (
+                                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm rounded-full p-2">
+                                        <Play size={14} className="text-white" />
+                                      </div>
+                                    )}
                                   </div>
-                                  <div className="flex items-center justify-between">
-                                    <div className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                                      {item.category}
+                                  <div className="p-4">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <h3 className="font-semibold text-gray-900 line-clamp-1">
+                                        {item.title || 'Untitled Project'}
+                                      </h3>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <div className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                                        {item.category}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>

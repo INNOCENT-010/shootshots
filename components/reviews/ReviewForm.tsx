@@ -1,30 +1,65 @@
-﻿// components/reviews/ReviewForm.tsx - COMPLETE FIXED VERSION
+﻿// components/reviews/ReviewForm.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Star, Send, X, AlertCircle, Check } from 'lucide-react'
+import { Star, Send, X, AlertCircle, Check, Mail, User as UserIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 interface ReviewFormProps {
   creatorId: string
   onSuccess?: () => void
   onCancel?: () => void
+  existingReview?: {
+    id: string
+    rating: number
+    comment: string | null
+    reviewer_email?: string
+    reviewer_name?: string
+    edit_token?: string
+  }
 }
 
-export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFormProps) {
-  const [rating, setRating] = useState(0)
+export default function ReviewForm({ creatorId, onSuccess, onCancel, existingReview }: ReviewFormProps) {
+  // Rating state
+  const [rating, setRating] = useState(existingReview?.rating || 0)
   const [hoverRating, setHoverRating] = useState(0)
-  const [comment, setComment] = useState('')
+  const [comment, setComment] = useState(existingReview?.comment || '')
+  
+  // Auth state
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  
+  // Anonymous user fields
+  const [reviewerName, setReviewerName] = useState(existingReview?.reviewer_name || '')
+  const [reviewerEmail, setReviewerEmail] = useState(existingReview?.reviewer_email || '')
+  
+  // Form state
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [editToken] = useState(existingReview?.edit_token || crypto.randomUUID())
+  const [isEditing] = useState(!!existingReview)
 
-  // Get current user on component mount
+  // Get current user on mount
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       setCurrentUserId(user?.id || null)
+      setIsAuthenticated(!!user)
+      
+      // If authenticated, pre-fill name from profile
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name, email')
+          .eq('id', user.id)
+          .single()
+        
+        if (profile) {
+          setReviewerName(profile.display_name || '')
+          setReviewerEmail(profile.email || user.email || '')
+        }
+      }
     }
     getCurrentUser()
   }, [])
@@ -43,16 +78,26 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
       return
     }
 
-    // Check if user is logged in
-    if (!currentUserId) {
-      setError('Please sign in to submit a review')
+    // Check if trying to review themselves
+    if (isAuthenticated && currentUserId === creatorId) {
+      setError('You cannot review yourself')
       return
     }
 
-    // Check if user is trying to review themselves
-    if (currentUserId === creatorId) {
-      setError('You cannot review yourself')
-      return
+    // Validate anonymous fields
+    if (!isAuthenticated) {
+      if (!reviewerName.trim()) {
+        setError('Please enter your name')
+        return
+      }
+      if (!reviewerEmail.trim()) {
+        setError('Please enter your email')
+        return
+      }
+      if (!reviewerEmail.includes('@')) {
+        setError('Please enter a valid email')
+        return
+      }
     }
 
     setSubmitting(true)
@@ -60,102 +105,109 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
     setSuccess(false)
 
     try {
-      // Submit the review - RLS will prevent duplicates and self-reviews
-      const { data, error: submitError } = await supabase
-        .from('creator_reviews')
-        .insert({
+      let result;
+      
+      if (isEditing && existingReview?.id) {
+        // UPDATE existing review
+        result = await supabase
+          .from('creator_reviews')
+          .update({
+            rating: rating,
+            comment: comment.trim() || null,
+            edited_at: new Date().toISOString(),
+            ...(isAuthenticated 
+              ? { reviewer_id: currentUserId }
+              : { 
+                  reviewer_name: reviewerName.trim(),
+                  reviewer_email: reviewerEmail.trim().toLowerCase(),
+                  edit_token: editToken
+                }
+            )
+          })
+          .eq('id', existingReview.id)
+          .eq(isAuthenticated ? 'reviewer_id' : 'edit_token', 
+               isAuthenticated ? currentUserId : editToken)
+          .select()
+          .single()
+      } else {
+        // Check for existing review by email (for anonymous)
+        if (!isAuthenticated) {
+          const { data: existing } = await supabase
+            .from('creator_reviews')
+            .select('id, rating, comment, edit_token')
+            .eq('creator_id', creatorId)
+            .eq('reviewer_email', reviewerEmail.trim().toLowerCase())
+            .maybeSingle()
+
+          if (existing) {
+            // Redirect to edit mode
+            setError('You already reviewed this creator. You can edit your review below.')
+            setSubmitting(false)
+            if (onSuccess) {
+              // Pass the existing review to parent for editing
+              onSuccess()
+            }
+            return
+          }
+        }
+
+        // INSERT new review
+        const reviewData: any = {
           creator_id: creatorId,
-          reviewer_id: currentUserId,
           rating: rating,
           comment: comment.trim() || null,
           is_approved: true,
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (submitError) {
-        // Handle specific errors
-        if (submitError.code === '23505') {
-          setError('You have already reviewed this creator')
-        } else if (submitError.code === '23514') {
-          setError('You cannot review yourself')
-        } else if (submitError.code === '42501') {
-          setError('Permission denied. Please make sure you are logged in.')
-        } else {
-          setError(submitError.message || 'Failed to submit review')
+          created_at: new Date().toISOString(),
+          reviewer_type: isAuthenticated ? 'authenticated' : 'anonymous'
         }
-        throw submitError
-      }
 
-      // Check database state BEFORE update
-      const { data: beforeProfile } = await supabase
-        .from('profiles')
-        .select('avg_rating, total_reviews')
-        .eq('id', creatorId)
-        .single()
+        if (isAuthenticated) {
+          reviewData.reviewer_id = currentUserId
+        } else {
+          reviewData.reviewer_name = reviewerName.trim()
+          reviewData.reviewer_email = reviewerEmail.trim().toLowerCase()
+          reviewData.verification_token = crypto.randomUUID()
+          reviewData.edit_token = editToken
+          reviewData.is_verified = true // Set to false if you add email verification
+        }
 
-      // Update creator's rating via RPC
-      const { data: updateResult, error: updateError } = await supabase.rpc(
-        'force_update_creator_rating',
-        { p_creator_id: creatorId }
-      )
-
-      // Check database state AFTER RPC update
-      const { data: afterProfile } = await supabase
-        .from('profiles')
-        .select('avg_rating, total_reviews')
-        .eq('id', creatorId)
-        .single()
-
-      // If update didn't work, do DIRECT update
-      if (afterProfile && beforeProfile && afterProfile.total_reviews === beforeProfile.total_reviews) {
-        // Calculate manually
-        const { data: reviews } = await supabase
+        result = await supabase
           .from('creator_reviews')
-          .select('rating')
-          .eq('creator_id', creatorId)
-          .eq('is_approved', true)
-          .eq('is_flagged', false)
-
-        const totalReviews = reviews?.length || 0
-        const avgRating = reviews && reviews.length > 0 
-          ? parseFloat((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(2))
-          : 0
-
-        // Update directly
-        const { error: directError } = await supabase
-          .from('profiles')
-          .update({
-            avg_rating: avgRating,
-            total_reviews: totalReviews,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', creatorId)
-
-        // Verify final state
-        const { data: finalProfile } = await supabase
-          .from('profiles')
-          .select('avg_rating, total_reviews')
-          .eq('id', creatorId)
+          .insert(reviewData)
+          .select()
           .single()
       }
 
-      // Notify everyone that needs to refresh
+      if (result.error) {
+        if (result.error.code === '23505') {
+          setError('You have already reviewed this creator')
+        } else if (result.error.code === '23514') {
+          setError('You cannot review yourself')
+        } else {
+          setError(result.error.message || 'Failed to submit review')
+        }
+        throw result.error
+      }
+
+      // Update creator's rating
+      await supabase.rpc('force_update_creator_rating', { p_creator_id: creatorId })
+
+      // Notify components to refresh
       window.dispatchEvent(new CustomEvent('review-submitted', {
         detail: { creatorId }
       }))
 
-      // Show success state
+      // Show success
       setSuccess(true)
-      setComment('')
-      setRating(0)
+      
+      // Store edit token for future edits (anonymous users)
+      if (!isAuthenticated && !isEditing) {
+        localStorage.setItem(`review_edit_${creatorId}`, editToken)
+      }
 
-      // Auto-hide after 2 seconds and call success callback
+      // Reset form or close
       setTimeout(() => {
-        if (onSuccess) {
-          onSuccess()
-        }
+        if (onSuccess) onSuccess()
       }, 2000)
 
     } catch (error: any) {
@@ -199,11 +251,29 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
             <Check size={24} className="text-green-600" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Review Published Successfully!
+            {isEditing ? 'Review Updated!' : 'Review Published!'}
           </h3>
           <p className="text-gray-600 mb-4">
-            Your review is now visible on the creator's profile.
+            {isEditing 
+              ? 'Your review has been updated successfully.'
+              : 'Your review is now visible on the creator\'s profile.'
+            }
           </p>
+          
+          {!isAuthenticated && !isEditing && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-left">
+              <p className="text-sm font-medium text-blue-800 mb-1">
+                ✉️ Save this to edit later:
+              </p>
+              <p className="text-xs text-blue-700 break-all font-mono bg-blue-100/50 p-2 rounded">
+                {reviewerEmail}
+              </p>
+              <p className="text-xs text-blue-600 mt-2">
+                Use this email to edit your review in the future.
+              </p>
+            </div>
+          )}
+          
           <div className="flex items-center justify-center gap-2 mb-4">
             <div className="flex">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -220,9 +290,11 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
             </div>
             <span className="text-gray-700 font-medium">{rating}.0</span>
           </div>
+          
           {comment && (
             <p className="text-gray-700 italic text-sm mb-4">"{comment}"</p>
           )}
+          
           <div className="text-sm text-gray-500">
             This message will close automatically...
           </div>
@@ -234,15 +306,20 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
       <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">Leave a Review</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-3">
+          {isEditing ? 'Edit Your Review' : 'Leave a Review'}
+        </h3>
         
         {/* Authentication Status */}
-        {!currentUserId && (
-          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-center gap-2">
-              <AlertCircle size={16} className="text-yellow-600" />
-              <div className="text-sm text-yellow-800">
-                Please sign in to submit a review
+        {!isAuthenticated && !isEditing && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <Mail size={16} className="text-blue-600 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <span className="font-medium">Reviewing as guest?</span>
+                <p className="text-xs mt-1">
+                  Enter your email to post a review. You'll use this email to edit later.
+                </p>
               </div>
             </div>
           </div>
@@ -261,6 +338,50 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
           </div>
         </div>
 
+        {/* Anonymous User Fields - Only show if not authenticated */}
+        {!isAuthenticated && (
+          <div className="space-y-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Your Name *
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={reviewerName}
+                  onChange={(e) => setReviewerName(e.target.value)}
+                  className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:border-green-600 focus:outline-none text-gray-900 disabled:opacity-50"
+                  placeholder="John Doe"
+                  disabled={submitting || success || isEditing}
+                  required={!isAuthenticated}
+                />
+                <UserIcon size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Your Email *
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  value={reviewerEmail}
+                  onChange={(e) => setReviewerEmail(e.target.value)}
+                  className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:border-green-600 focus:outline-none text-gray-900 disabled:opacity-50"
+                  placeholder="you@example.com"
+                  disabled={submitting || success || isEditing}
+                  required={!isAuthenticated}
+                />
+                <Mail size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                We'll never share your email. Use this to edit your review later.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Comment */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-900 mb-2">
@@ -273,7 +394,7 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
             rows={4}
             placeholder="Share your experience with this creator..."
             maxLength={500}
-            disabled={submitting || !currentUserId}
+            disabled={submitting || success}
           />
           <div className="text-xs text-gray-500 mt-1 text-right">
             {comment.length}/500 characters
@@ -306,18 +427,22 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
           
           <button
             type="submit"
-            disabled={submitting || rating === 0 || !currentUserId}
-            className="flex items-center gap-2 px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            disabled={
+              submitting || 
+              rating === 0 || 
+              (!isAuthenticated && (!reviewerName.trim() || !reviewerEmail.trim()))
+            }
+            className="flex items-center gap-2 px-6 py-2 bg-green-900 text-white rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Publishing...</span>
+                <span>{isEditing ? 'Updating...' : 'Publishing...'}</span>
               </>
             ) : (
               <>
                 <Send size={16} />
-                <span>Publish Review</span>
+                <span>{isEditing ? 'Update Review' : 'Publish Review'}</span>
               </>
             )}
           </button>
@@ -325,7 +450,10 @@ export default function ReviewForm({ creatorId, onSuccess, onCancel }: ReviewFor
 
         {/* Info Text */}
         <div className="mt-4 text-xs text-gray-500">
-          Your review will be published immediately and visible to everyone.
+          {isAuthenticated 
+            ? 'Your review will be linked to your profile.'
+            : 'Your review will be published with your name and email. You can edit it later using the same email.'
+          }
         </div>
       </div>
     </form>

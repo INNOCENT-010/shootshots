@@ -1,4 +1,4 @@
-// app/(creator)/dashboard/page.tsx - UPDATED WITH PERMANENT SLUG URL
+// app/(creator)/dashboard/page.tsx - UPDATED WITH VIDEO PREVIEW
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Camera, Upload, Eye, Heart, Folder, Copy, Check, Image, Plus, ExternalLink, Link as LinkIcon, Film, Play } from 'lucide-react'
 import Link from 'next/link'
-import VideoPreview from '@/components/common/VideoPreview'
+import VideoPreview from '@/components/common/VideoPreview' // ← ADDED THIS IMPORT
 
 interface PortfolioItem {
   id: string
@@ -57,9 +57,6 @@ export default function DashboardPage() {
       
       setUser(session.user)
       
-      // =============================================
-      // UPDATED: Get user's profile with slug
-      // =============================================
       const { data: profileData } = await supabase
         .from('profiles')
         .select('id, slug, display_name')
@@ -68,7 +65,6 @@ export default function DashboardPage() {
       
       if (profileData) {
         setProfile(profileData)
-        // Use SLUG for URL, not ID
         const link = `${window.location.origin}/${profileData.slug}`
         setPortfolioLink(link)
       }
@@ -156,9 +152,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ============================================= */}
-        {/* UPDATED: Portfolio Link Card - Shows CLEAN URL */}
-        {/* ============================================= */}
+        {/* Portfolio Link Card */}
         <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -188,13 +182,12 @@ export default function DashboardPage() {
               )}
             </button>
           </div>
-          {/* Show preview of clean URL */}
           <p className="text-xs text-gray-500 mt-2">
             Your permanent portfolio URL: <span className="font-mono">{profile?.slug ? `/${profile.slug}` : ''}</span>
           </p>
         </div>
 
-        {/* Stats Cards - 3 Column Grid, Always Horizontal */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-3 gap-3 mb-8">
           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
             <p className="text-xs text-gray-600 mb-1">Items</p>
@@ -210,7 +203,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Upload Button - Prominent but Compact */}
+        {/* Upload Button */}
         <Link
           href="/upload"
           className="flex items-center justify-center gap-2 w-full bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors mb-6"
@@ -219,9 +212,9 @@ export default function DashboardPage() {
           <span className="font-medium">Upload New Portfolio Item</span>
         </Link>
 
-        {/* Quick Actions & Portfolio Items - Side by Side on Mobile */}
+        {/* Quick Actions & Portfolio Items */}
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Quick Actions - Horizontal Row on Mobile, Vertical on Desktop */}
+          {/* Quick Actions */}
           <div className="lg:w-64">
             <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Actions</h3>
             <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0">
@@ -230,12 +223,9 @@ export default function DashboardPage() {
                 className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0 lg:w-full"
               >
                 <Folder size={16} className="text-gray-700" />
-                <span className="text-sm font-medium text-gray-900 whitespace-nowrap">View Portfolio</span>
+                <span className="text-sm font-medium text-gray-900 whitespace-nowrap">Edit Portfolio</span>
               </Link>
               
-              {/* ============================================= */}
-              {/* UPDATED: Preview link uses SLUG, not ID */}
-              {/* ============================================= */}
               <Link
                 href={`/${profile?.slug || user?.id}`}
                 target="_blank"
@@ -255,7 +245,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Portfolio Items - 2 Column Grid Always */}
+          {/* Portfolio Items */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-medium text-gray-700">Recent Portfolio Items</h3>
@@ -280,16 +270,12 @@ export default function DashboardPage() {
                       <div className="aspect-square bg-gray-100 relative">
                         {item.cover_media_url ? (
                           isVideo ? (
-                            <div className="relative w-full h-full">
-                              <img
-                                src={item.cover_media_url}
-                                alt={item.title}
-                                className="w-full h-full object-cover"
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                <Play size={20} className="text-white" fill="white" />
-                              </div>
-                            </div>
+                            // ===== FIXED: Using VideoPreview component =====
+                            <VideoPreview
+                              src={item.cover_media_url}
+                              poster={item.cover_media_url}
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
                             <img
                               src={item.cover_media_url}
