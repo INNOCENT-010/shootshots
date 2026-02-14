@@ -7,8 +7,8 @@ import { AuthProvider } from '@/components/providers/AuthProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Shootshots - Discover Photographers & Videographers',
-  description: 'Platform to discover and connect with photographers and videographers',
+  title: 'Modern Portfolio Websites for Creators',
+  description: 'Create a stunning portfolio website in minutes.digital career showcase their work beautifully to attract high-paying clients. No coding needed.',
 }
 
 export default function RootLayout({
